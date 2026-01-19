@@ -1254,18 +1254,19 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
         </p>
 
         <div id="versionInfo" style="display:none; background: var(--input-bg); padding: 15px; border: 1px solid var(--border); margin-bottom: 25px;">
-            <div style="color: #888; font-size: 14px;">YOUR VERSION</div>
+            <div style="color: #888; font-size: 14px;">your version:</div>
             <div id="currentVerDisplay" style="color: var(--text); font-size: 18px; font-weight: bold; margin-bottom: 10px;">--</div>
             
-            <div style="color: var(--accent); font-size: 14px;">LATEST VERSION</div>
+            <div style="color: var(--accent); font-size: 14px;">latest version:</div>
             <div id="newVerDisplay" style="color: var(--accent); font-size: 18px; font-weight: bold;">--</div>
         </div>
 
         <button id="updateActionBtn" class="btn-primary" onclick="handleUpdateAction()" style="display:none; width: 100%; padding: 15px;">
-            UPDATE NOW
+            update now
         </button>
     </div>
 </div>
+
 
     <div id="infoModal" class="modal" onclick="if(event.target === this) closeInfoModal()">
         <div class="modal-content">
@@ -3966,8 +3967,6 @@ else if (navState.activeRow === 3) {
 // =================================================================
 // AUTO-UPDATER LOGIC (Enhanced)
 // =================================================================
-autoUpdater.autoDownload = false; // We will manually trigger download now
-autoUpdater.autoInstallOnAppQuit = true;
 
 function sendUpdateStatus(text, status, newVersion = null) {
     if (mainWindow) {
@@ -3981,42 +3980,52 @@ function sendUpdateStatus(text, status, newVersion = null) {
 }
 
 // 1. Event Listeners
-autoUpdater.on('checking-for-update', () => sendUpdateStatus('checking for updates...', 'checking'));
 
-autoUpdater.on('update-available', (info) => {
-    // We found an update! Send the version info to UI
-    sendUpdateStatus('update available', 'available', info.version);
-});
+const updateModal = document.getElementById('updateModal');
+const updateTitle = document.getElementById('updateTitle');
+const updateStatusText = document.getElementById('updateStatusText'); // Was 'updateDetails'
+const updateActionBtn = document.getElementById('updateActionBtn');   // Was 'btnUpdateNow'
+const updateSpinner = document.getElementById('updateSpinner');
+const versionInfo = document.getElementById('versionInfo');
 
-autoUpdater.on('update-not-available', (info) => sendUpdateStatus('you\'re up to date :)', 'uptodate'));
+// 1. OPEN THE MODAL (Triggered by clicking "Check for Updates" in menu)
+function checkForUpdates() {
+    // Hide the main menu if it's open
+    const menu = document.getElementById('logoMenu');
+    if (menu) menu.classList.remove('visible');
 
-autoUpdater.on('error', (err) => sendUpdateStatus('check failed', 'error'));
+    // Show Modal
+    updateModal.classList.add('visible');
+    updateModal.style.display = 'flex'; 
+    
+    // Reset UI State
+    updateSpinner.style.display = 'block';
+    updateActionBtn.style.display = 'none';
+    versionInfo.style.display = 'none';
+    
+    updateTitle.innerText = "Checking...";
+    updateStatusText.innerText = "Connecting to GitHub...";
+    
+    // Send signal to main.js
+    window.ipcRenderer.send('check-for-updates');
+}
 
-autoUpdater.on('download-progress', (progressObj) => {
-    let msg = `downloading: ${Math.round(progressObj.percent)}%`;
-    sendUpdateStatus(msg, 'downloading');
-});
+// 2. START THE DOWNLOAD (Triggered by "UPDATE NOW" button)
+function startDownload() {
+    btnUpdateNow.innerText = "DOWNLOADING...";
+    btnUpdateNow.disabled = true;
+    updateSpinner.style.display = 'block';
+    window.ipcRenderer.send('start-download');
+}
 
-autoUpdater.on('update-downloaded', (info) => sendUpdateStatus('ready to install', 'ready', info.version));
+// 3. CLOSE MODAL
+function closeUpdateModal() {
+    updateModal.classList.remove('visible');
+    updateModal.style.display = 'none';
+}
 
 // 2. Commands from Frontend
-ipcMain.on('check-for-updates', () => {
-    if (app.isPackaged) {
-        autoUpdater.checkForUpdates();
-    } else {
-        // Dev Mode Simulation
-        setTimeout(() => sendUpdateStatus('checking for updates...', 'checking'), 500);
-        setTimeout(() => sendUpdateStatus('dev mode (no updates)', 'error'), 2000);
-    }
-});
 
-ipcMain.on('start-download', () => {
-    autoUpdater.downloadUpdate();
-});
-
-ipcMain.on('restart-app', () => {
-    autoUpdater.quitAndInstall();
-});
 
 
 let updateStatus = 'idle'; // idle, checking, downloading, ready
@@ -4051,111 +4060,80 @@ function closeUpdateModal() {
 // CLICK HANDLER FOR MENU BUTTON
 function handleUpdateClick() {
     document.getElementById('logoMenu').classList.remove('visible');
-    openUpdateModal();
+    
+    updateModal.classList.add('visible');
+    updateModal.style.display = 'flex'; // Force flex for centering
+    
+    // Reset UI State
+    updateSpinner.style.display = 'block';
+    updateActionBtn.style.display = 'none';
+    versionInfo.style.display = 'none';
+    
+    updateTitle.innerText = "Checking...";
+    updateStatusText.innerText = "Connecting to GitHub...";
+    
+    window.ipcRenderer.send('check-for-updates');
 }
 
 // CLICK HANDLER FOR MODAL BUTTON
 function handleUpdateAction() {
-    if (updateState === 'available') {
-        // Start Download
-        window.ipcRenderer.send('start-download');
-        document.getElementById('updateActionBtn').style.display = 'none';
-        document.getElementById('updateSpinner').style.display = 'block';
-    } 
-    else if (updateState === 'ready') {
-        // Restart
-        window.ipcRenderer.send('restart-app');
-    }
+    updateActionBtn.innerText = "DOWNLOADING...";
+    updateActionBtn.disabled = true;
+    updateSpinner.style.display = 'block';
+    window.ipcRenderer.send('start-download');
 }
 
 // IPC LISTENER
 window.ipcRenderer.on('update-message', (event, data) => {
-    const statusText = document.getElementById('updateStatusText');
-    const spinner = document.getElementById('updateSpinner');
-    const actionBtn = document.getElementById('updateActionBtn');
-    const verInfo = document.getElementById('versionInfo');
+    console.log("[UI] Update Status:", data);
 
-    updateState = data.status;
-    console.log(`[Updater] ${data.status}: ${data.text}`);
-
-    // DEFAULT: Update text
-    statusText.textContent = data.text;
-
-    // STATE HANDLERS
-    if (data.status === 'checking') {
-        spinner.style.display = 'block';
-        verInfo.style.display = 'none';
-        actionBtn.style.display = 'none';
-    }
-    else if (data.status === 'uptodate') {
-        spinner.style.display = 'none';
-        statusText.classList.add('update-success'); // Green text
-        
-        // Auto-close after 2s for smoothness
-        setTimeout(() => closeUpdateModal(), 2500);
-    }
-    else if (data.status === 'available') {
-        spinner.style.display = 'none'; // Stop spinning
-        
-        // Show Version Compare
-        document.getElementById('currentVerDisplay').textContent = data.currentVersion;
-        document.getElementById('newVerDisplay').textContent = data.newVersion;
-        verInfo.style.display = 'block';
-        
-        // Show Update Button
-        actionBtn.textContent = "UPDATE NOW";
-        actionBtn.style.display = 'block';
-        actionBtn.focus();
-    }
-    else if (data.status === 'downloading') {
-        spinner.style.display = 'block';
-        verInfo.style.display = 'none'; // Hide version info to focus on progress
-    }
-    else if (data.status === 'ready') {
-        spinner.style.display = 'none';
-        statusText.classList.add('update-success');
-        
-        actionBtn.textContent = "RESTART NOW";
-        actionBtn.style.display = 'block';
-        actionBtn.className = 'btn-primary restart-ready'; // Add glow
-        actionBtn.focus();
-    }
-    else if (data.status === 'error') {
-        spinner.style.display = 'none';
-        statusText.classList.add('update-error');
-    }
-});
-
-// Listen for messages from Main Process
-window.ipcRenderer.on('update-message', (event, data) => {
-    const btn = document.getElementById('updateBtn');
-    if (!btn) return;
-
-    console.log(`[Updater] ${data.status}: ${data.text}`);
-    btn.textContent = data.text;
-    updateStatus = data.status;
-
-    // Reset styles
-    btn.className = 'logo-menu-item';
-
-    if (data.status === 'ready') {
-        btn.classList.add('update-ready');
-    } 
-    else if (data.status === 'error') {
-        btn.classList.add('update-error');
-        // Reset text after 3 seconds
-        setTimeout(() => {
-            btn.textContent = 'check for updates';
-            btn.classList.remove('update-error');
-            updateStatus = 'idle';
-        }, 3000);
-    }
-    else if (data.status === 'idle') {
-         // "Up to date" -> Reset after 3 seconds
-         setTimeout(() => {
-            btn.textContent = 'check for updates';
-            updateStatus = 'idle';
-        }, 3000);
+    try {
+        if (data.status === 'checking') {
+            updateTitle.innerText = "Checking...";
+        }
+        else if (data.status === 'available') {
+            updateSpinner.style.display = 'none';
+            updateTitle.innerText = "new version available!";
+            updateStatusText.innerText = "a new update is ready.";
+            
+            // Show Versions
+            document.getElementById('currentVerDisplay').innerText = data.localVersion;
+            document.getElementById('newVerDisplay').innerText = data.remoteVersion;
+            versionInfo.style.display = 'block';
+            
+            // Show Button
+            updateActionBtn.style.display = 'inline-block';
+            updateActionBtn.innerText = "update now";
+            updateActionBtn.disabled = false;
+            updateActionBtn.onclick = handleUpdateAction; // Bind click
+            updateActionBtn.focus();
+        } 
+        else if (data.status === 'uptodate') {
+            updateSpinner.style.display = 'none';
+            updateTitle.innerText = "you're up to date :)";
+            updateStatusText.innerText = `Current Version: ${data.localVersion}`;
+            updateActionBtn.style.display = 'none';
+            
+            setTimeout(closeUpdateModal, 2500);
+        }
+        else if (data.status === 'downloading') {
+            updateSpinner.style.display = 'block';
+            updateTitle.innerText = "downloading...";
+            updateStatusText.innerText = "fetching files from github...";
+            updateActionBtn.style.display = 'none';
+        }
+        else if (data.status === 'ready') {
+            updateSpinner.style.display = 'none';
+            updateTitle.innerText = "restarting...";
+            updateStatusText.innerText = "applying changes...";
+        }
+        else if (data.status === 'error') {
+            updateSpinner.style.display = 'none';
+            updateTitle.innerText = "Error";
+            updateStatusText.innerText = data.text;
+        }
+    } catch (err) {
+        console.error("UI Update Error:", err);
     }
 });
 

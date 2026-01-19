@@ -1,5 +1,4 @@
-const { app, BrowserWindow, globalShortcut, session, ipcMain } = require('electron');
-const { autoUpdater } = require('electron-updater');
+const { app, BrowserWindow, globalShortcut, session, ipcMain, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -403,58 +402,106 @@ async function createWindow() {
     globalShortcut.register('Escape', () => app.quit());
 }
 
-autoUpdater.autoDownload = false; // Important: We wait for user to click "Update Now"
-autoUpdater.autoInstallOnAppQuit = true;
 
-function sendUpdateStatus(text, status, newVersion = null) {
-    if (mainWindow) {
-        mainWindow.webContents.send('update-message', { 
-            text, 
-            status, 
-            currentVersion: app.getVersion(), 
-            newVersion 
+const REPO_OWNER = "rzzse";
+const REPO_NAME = "funnymonkeybusiness";
+const BRANCH = "main";
+const FILES_TO_UPDATE = ['package.json', 'main.js', 'preload.js', 'index.html']; 
+
+function checkForCodeUpdates() {
+    console.log('[Updater] Checking GitHub...');
+    if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Checking GitHub...', status: 'checking' });
+
+    // 1. Request the Package JSON
+    const request = net.request(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/package.json?t=${Date.now()}`);
+
+    request.on('response', (response) => {
+        let body = '';
+        response.on('data', (chunk) => body += chunk);
+        response.on('end', () => {
+            try {
+                if (response.statusCode !== 200) throw new Error("GitHub 404");
+                
+                const remotePkg = JSON.parse(body);
+                const localPkg = require('./package.json');
+
+                // --- TEST SPOOF: FORCE THE UI TO SHOW ---
+                // We pretend your version is 0.0.0 so the mismatch ALWAYS triggers
+                const currentVer = "0.0.0"; // localPkg.version; <--- Uncomment this later
+                const newVer = remotePkg.version;
+
+                console.log(`[Updater] Compare: Local(${currentVer}) vs Remote(${newVer})`);
+
+                if (currentVer !== newVer) {
+                    console.log('[Updater] sending AVAILABLE signal to UI...');
+                    
+                    if (mainWindow) {
+                        mainWindow.webContents.send('update-message', { 
+                            text: 'Update Found', 
+                            status: 'available',
+                            localVersion: currentVer, // Explicit name
+                            remoteVersion: newVer     // Explicit name
+                        });
+                    }
+                } else {
+                    console.log('[Updater] Up to date.');
+                    if (mainWindow) mainWindow.webContents.send('update-message', { 
+                        text: 'You are up to date!', 
+                        status: 'uptodate',
+                        localVersion: currentVer
+                    });
+                }
+            } catch (e) {
+                console.error('[Updater] Error:', e);
+                if (mainWindow) mainWindow.webContents.send('update-message', { text: "Error: " + e.message, status: 'error' });
+            }
         });
+    });
+    
+    request.on('error', (err) => {
+         if (mainWindow) mainWindow.webContents.send('update-message', { text: "Network Error", status: 'error' });
+    });
+    request.end();
+}
+
+async function downloadUpdates() {
+    if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Downloading...', status: 'downloading' });
+    try {
+        for (const file of FILES_TO_UPDATE) {
+            await downloadFile(file);
+        }
+        if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Restarting...', status: 'ready' });
+        setTimeout(() => { app.relaunch(); app.exit(0); }, 1000);
+    } catch (err) {
+        if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Failed: ' + err.message, status: 'error' });
     }
 }
 
+function downloadFile(filename) {
+    return new Promise((resolve, reject) => {
+        const url = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${filename}`;
+        const request = net.request(`${url}?t=${Date.now()}`);
+        request.on('response', (response) => {
+            let fileData = '';
+            response.on('data', (chunk) => fileData += chunk);
+            response.on('end', () => {
+                fs.writeFileSync(path.join(__dirname, filename), fileData);
+                resolve();
+            });
+        });
+        request.on('error', reject);
+        request.end();
+    });
+}
+
+// LINK THE BUTTONS
+ipcMain.on('check-for-updates', () => checkForCodeUpdates());
+ipcMain.on('start-download', () => downloadUpdates());
+ipcMain.on('restart-app', () => { app.relaunch(); app.exit(0); });
+
 // 1. Event Listeners
-autoUpdater.on('checking-for-update', () => sendUpdateStatus('checking for updates...', 'checking'));
-
-autoUpdater.on('update-available', (info) => {
-    // Found update! Send version info so Modal can display "v1.0.0 -> v1.0.1"
-    sendUpdateStatus('update available', 'available', info.version);
-});
-
-autoUpdater.on('update-not-available', (info) => sendUpdateStatus('you\'re up to date :)', 'uptodate'));
-
-autoUpdater.on('error', (err) => sendUpdateStatus('check failed', 'error'));
-
-autoUpdater.on('download-progress', (progressObj) => {
-    let msg = `downloading: ${Math.round(progressObj.percent)}%`;
-    sendUpdateStatus(msg, 'downloading');
-});
-
-autoUpdater.on('update-downloaded', (info) => sendUpdateStatus('ready to install', 'ready', info.version));
 
 // 2. Commands from Frontend
-ipcMain.on('check-for-updates', () => {
-    if (app.isPackaged) {
-        autoUpdater.checkForUpdates();
-    } else {
-        // Dev Mode Simulation (So you can see the UI working)
-        setTimeout(() => sendUpdateStatus('checking for updates...', 'checking'), 500);
-        setTimeout(() => sendUpdateStatus('dev mode (no updates)', 'error'), 2000);
-    }
-});
-
-// CRITICAL: This was missing in your file!
-ipcMain.on('start-download', () => {
-    autoUpdater.downloadUpdate();
-});
-
-ipcMain.on('restart-app', () => {
-    autoUpdater.quitAndInstall();
-});
 
 app.on('ready', createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
