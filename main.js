@@ -1,3 +1,4 @@
+// --- 1. IMPORTS (Fixed: Added 'net', Removed 'electron-updater') ---
 const { app, BrowserWindow, globalShortcut, session, ipcMain, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -5,7 +6,7 @@ const fs = require('fs');
 let mainWindow;
 let streamActive = false; 
 
-// --- 1. BASELINE COORDINATES (Calibrated for 1920x1080) ---
+// --- 2. BASELINE COORDINATES (Calibrated for 1920x1080) ---
 const REF_W = 1920;
 const REF_H = 1080;
 
@@ -60,8 +61,7 @@ async function createWindow() {
         console.log("❌ God Mode Failed:", err);
     }
 
-    // --- 2. THE SMART SCALER ---
-    // Calculates where X/Y should be on the CURRENT screen size
+    // --- 3. THE SMART SCALER ---
     function getScaledCoords(targetX, targetY) {
         if (!mainWindow) return { x: targetX, y: targetY };
         const { width, height } = mainWindow.getBounds();
@@ -76,20 +76,11 @@ async function createWindow() {
         };
     }
 
-    
-
-    // --- SPORTS SNIPER (Streamed.su Integration) ---
-    // --- SPORTS SNIPER (Advanced Logging & Probing) ---
-    // --- SPORTS SNIPER (Updated for Streamed.pk) ---
-    // --- SPORTS SNIPER (Corrected URL Structure) ---
-    // --- SPORTS SNIPER v2.0 (Server Hopper) ---
-    // --- SPORTS SNIPER v2.1 (Verbose Server Hopper) ---
-    // --- SPORTS SNIPER v2.2 (Hardened: Popups & Redirects Killed) ---
-    // --- SPORTS SNIPER v3.0 (Instant Play + Background Scan) ---
+    // --- SPORTS SNIPER LOGIC (Keep Intact) ---
     ipcMain.on('start-sport-scan', async (event, data) => {
         const { matchId } = data;
         
-        // Priority Order: Direct first, then the most reliable providers
+        // Priority Order
         const targets = [
             { name: "Direct", url: `https://streamed.pk/watch/${matchId}` },
             { name: "Alpha", url: `https://streamed.pk/watch/${matchId}/alpha/1` },
@@ -107,7 +98,6 @@ async function createWindow() {
             webPreferences: { offscreen: true, contextIsolation: false, nodeIntegration: false }
         });
 
-        // HARDENED SECURITY (Popup Killer)
         sportWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
         sportWindow.webContents.setAudioMuted(true);
         sportWindow.webContents.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
@@ -116,7 +106,6 @@ async function createWindow() {
 
         try {
             for (let i = 0; i < targets.length; i++) {
-                // If the window was killed by the app closing, stop
                 if (sportWindow.isDestroyed()) break;
 
                 const target = targets[i];
@@ -133,20 +122,17 @@ async function createWindow() {
                                 const body = document.body.innerText.toLowerCase();
                                 const iframes = Array.from(document.querySelectorAll('iframe'));
 
-                                // 1. Fail Fast
                                 if (body.includes("404") || document.title.includes("Not Found") || body.includes("stream not found")) {
                                     resolve({ status: 'dead' });
                                     return;
                                 }
 
-                                // 2. Success
                                 const valid = iframes.find(f => f.src && (f.src.includes('embed') || f.src.includes('player') || f.src.includes('v1') || f.src.includes('cdn')));
                                 if (valid) { resolve({ status: 'success', streamUrl: valid.src }); return; }
                                 
                                 const vid = document.querySelector('video');
                                 if(vid && vid.src && vid.src.startsWith('http')) { resolve({ status: 'success', streamUrl: vid.src }); return; }
 
-                                // 3. Retry (Max 3s)
                                 if (attempts >= 15) resolve({ status: 'timeout' });
                                 else setTimeout(check, 200);
                             };
@@ -157,15 +143,13 @@ async function createWindow() {
                     if (scanResult.status === 'success') {
                         console.log(`      >>> FOUND: ${target.name}`);
                         
-                        // Send to UI
                         mainWindow.webContents.send('sport-stream-found', {
                             name: `Streamed (${target.name})`,
                             streamUrl: scanResult.streamUrl,
-                            isFirst: !firstFound // Tell UI if this is the "Instant Play" one
+                            isFirst: !firstFound 
                         });
                         
                         firstFound = true;
-                        // WE DO NOT BREAK HERE! We keep scanning to fill the list.
                     }
 
                 } catch (e) { console.log(`      [!] Error on ${target.name}`); }
@@ -219,62 +203,45 @@ async function createWindow() {
                 await frame.executeJavaScript(`
                     (() => {
                         try {
-                            // 1. NUKE FULLSCREEN (The Straitjacket)
-                            // We replace the browser's native fullscreen functions with empty functions
                             const noop = () => { console.log("Blocked Fullscreen Attempt"); };
-                            
                             window.HTMLElement.prototype.requestFullscreen = noop;
                             window.HTMLElement.prototype.webkitRequestFullscreen = noop;
                             window.HTMLElement.prototype.mozRequestFullScreen = noop;
                             window.HTMLElement.prototype.msRequestFullscreen = noop;
-                            
                             if (window.HTMLVideoElement) {
                                 window.HTMLVideoElement.prototype.webkitEnterFullscreen = noop;
                                 window.HTMLVideoElement.prototype.enterFullscreen = noop;
                             }
-                            
-                            // 2. REMOVE ADS & OVERLAYS (Your original cleanup)
                             const targets = ['div.flex.w-full.items-center.px-2.pb-2','div[data-media-time-slider]','button[data-media-tooltip="seek"]','button[aria-label="Play"]','button[data-media-tooltip="play"]'];
                             targets.forEach(s => document.querySelectorAll(s).forEach(el => { 
-                                if(el.style.opacity!=='0') { 
-                                    el.style.opacity='0'; 
-                                    el.style.pointerEvents='auto'; 
-                                    el.style.cursor='none'; 
-                                }
+                                if(el.style.opacity!=='0') { el.style.opacity='0'; el.style.pointerEvents='auto'; el.style.cursor='none'; }
                             }));
-                            
-                            // 3. KILL POPUPS
                             document.querySelectorAll('div').forEach(d => { 
                                 if(parseInt(window.getComputedStyle(d).zIndex)>2000000000) d.remove(); 
                             });
-
-                        } catch(err) {
-                            // Ignore internal errors inside the frame
-                        }
+                        } catch(err) {}
                     })();
-                `).catch(() => {}); // <--- CRITICAL: Swallows errors if frame is cross-origin or busy
+                `).catch(() => {});
             } catch (e) { }
         }
 
         if (playerReady) {
-            // 1. AUTO-UNMUTE (SCALED)
+            // 1. AUTO-UNMUTE
             if (needsUnmute) {
                 console.log("🔇 Unmuting (Scaled)...");
                 const mutePos = getScaledCoords(BASE_MUTE_X, BASE_MUTE_Y);
                 const volMaxPos = getScaledCoords(BASE_VOL_MAX_X, BASE_VOL_MAX_Y);
-                
                 await simulateClick(mutePos.x, mutePos.y);
                 await new Promise(r => setTimeout(r, 50));
                 await simulateClick(volMaxPos.x, volMaxPos.y);
             }
 
-            // 2. KICKSTART (SCALED)
+            // 2. KICKSTART
             if (!streamActive) {
                 streamActive = true; 
                 console.log("⚡ Kickstart (Scaled)...");
                 const fwdPos = getScaledCoords(BASE_FORWARD_X, BASE_FORWARD_Y);
                 const rwdPos = getScaledCoords(BASE_REWIND_X, BASE_REWIND_Y);
-
                 await simulateClick(fwdPos.x, fwdPos.y);
                 await new Promise(r => setTimeout(r, 100));
                 await simulateClick(rwdPos.x, rwdPos.y);
@@ -286,7 +253,7 @@ async function createWindow() {
         }
     }, 200);
 
-    // --- CLICK SIMULATION (SHIELD BYPASS) ---
+    // --- CLICK SIMULATION ---
     async function simulateClick(x, y) {
         try {
             if (mainWindow.webContents.debugger.isAttached()) {
@@ -299,8 +266,6 @@ async function createWindow() {
             }
         } catch (e) {}
     }
-
-    
 
     // --- CONFIG ---
     const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
@@ -340,7 +305,6 @@ async function createWindow() {
                 const hasVideo = await frame.executeJavaScript(`(() => { const v = document.querySelector('video'); return v && v.duration > 0; })()`, true);
 
                 if (hasVideo) {
-                    // --- SCALED CONTROLS ---
                     if (command === 'togglePlay') {
                         const center = getScaledCoords(BASE_CENTER_X, BASE_CENTER_Y);
                         const startPaused = await frame.executeJavaScript(`document.querySelector('video').paused`, true);
@@ -359,8 +323,7 @@ async function createWindow() {
                         const rwd = getScaledCoords(BASE_REWIND_X, BASE_REWIND_Y);
                         const start = await frame.executeJavaScript(`document.querySelector('video').currentTime`, true);
                         for(let i=0; i<5; i++) {
-                            await simulateClick(rwd.x, rwd.y);
-                            await new Promise(r => setTimeout(r, 150));
+                            await simulateClick(rwd.x, rwd.y); await new Promise(r => setTimeout(r, 150));
                             const now = await frame.executeJavaScript(`document.querySelector('video').currentTime`, true);
                             if(now < start - 2) break; 
                         }
@@ -369,29 +332,18 @@ async function createWindow() {
                         const fwd = getScaledCoords(BASE_FORWARD_X, BASE_FORWARD_Y);
                         const start = await frame.executeJavaScript(`document.querySelector('video').currentTime`, true);
                         for(let i=0; i<5; i++) {
-                            await simulateClick(fwd.x, fwd.y);
-                            await new Promise(r => setTimeout(r, 150));
+                            await simulateClick(fwd.x, fwd.y); await new Promise(r => setTimeout(r, 150));
                             const now = await frame.executeJavaScript(`document.querySelector('video').currentTime`, true);
                             if(now > start + 2) break;
                         }
                     }
                     else if (data.action === 'seek') {
                         const percent = data.percent;
-                        
-                        // --- DYNAMIC SEEK BAR CALCULATION ---
                         const scaledStart = getScaledCoords(BASE_BAR_START_X, BASE_BAR_Y);
                         const scaledEnd = getScaledCoords(BASE_BAR_END_X, BASE_BAR_Y);
-                        
-                        // Calculate exact X pixel for this resolution
                         const targetX = Math.round(scaledStart.x + (percent * (scaledEnd.x - scaledStart.x)));
                         const targetY = scaledStart.y; // Y is constant
-                        
-                        await mainWindow.webContents.executeJavaScript(`(function(){const s=document.getElementById('clickShield');if(s)s.style.pointerEvents='none'})()`);
-                        await mainWindow.webContents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mouseMoved', x: targetX, y: targetY });
-                        await mainWindow.webContents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mousePressed', x: targetX, y: targetY, button: 'left', clickCount: 1 });
-                        await new Promise(r => setTimeout(r, 150));
-                        await mainWindow.webContents.debugger.sendCommand('Input.dispatchMouseEvent', { type: 'mouseReleased', x: targetX, y: targetY, button: 'left', clickCount: 1 });
-                        await mainWindow.webContents.executeJavaScript(`(function(){const s=document.getElementById('clickShield');if(s)s.style.pointerEvents='auto'})()`);
+                        await simulateClick(targetX, targetY);
                     }
                     break;
                 }
@@ -402,17 +354,24 @@ async function createWindow() {
     globalShortcut.register('Escape', () => app.quit());
 }
 
+// =================================================================
+// HOT-SWAP GITHUB UPDATER (NO ELECTRON-UPDATER)
+// =================================================================
 
 const REPO_OWNER = "rzzse";
 const REPO_NAME = "funnymonkeybusiness";
 const BRANCH = "main";
 const FILES_TO_UPDATE = ['package.json', 'main.js', 'preload.js', 'index.html']; 
 
+// =================================================================
+// FORCE-READ UPDATER (Reads package.json directly)
+// =================================================================
+
 function checkForCodeUpdates() {
     console.log('[Updater] Checking GitHub...');
     if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Checking GitHub...', status: 'checking' });
 
-    // 1. Request the Package JSON
+    // 1. Request the Package JSON from GitHub (Timestamp prevents caching)
     const request = net.request(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/package.json?t=${Date.now()}`);
 
     request.on('response', (response) => {
@@ -420,35 +379,36 @@ function checkForCodeUpdates() {
         response.on('data', (chunk) => body += chunk);
         response.on('end', () => {
             try {
-                if (response.statusCode !== 200) throw new Error("GitHub 404");
+                if (response.statusCode !== 200) throw new Error("GitHub 404 - Repo Not Found");
                 
+                // 1. Get Remote Version
                 const remotePkg = JSON.parse(body);
-                const localPkg = require('./package.json');
+                const remoteVer = remotePkg.version;
 
-                // --- TEST SPOOF: FORCE THE UI TO SHOW ---
-                // We pretend your version is 0.0.0 so the mismatch ALWAYS triggers
-                const currentVer = "0.0.0"; // localPkg.version; <--- Uncomment this later
-                const newVer = remotePkg.version;
+                // 2. Get Local Version (FORCE READ FROM DISK)
+                // We do not use app.getVersion() because it returns 0.0.0 in dev
+                const localPath = path.join(__dirname, 'package.json');
+                const localData = fs.readFileSync(localPath, 'utf-8');
+                const localPkg = JSON.parse(localData);
+                const localVer = localPkg.version;
 
-                console.log(`[Updater] Compare: Local(${currentVer}) vs Remote(${newVer})`);
+                console.log(`[Updater] 📂 Reading from: ${localPath}`);
+                console.log(`[Updater] 📊 Compare: Local(${localVer}) vs Remote(${remoteVer})`);
 
-                if (currentVer !== newVer) {
-                    console.log('[Updater] sending AVAILABLE signal to UI...');
-                    
-                    if (mainWindow) {
-                        mainWindow.webContents.send('update-message', { 
-                            text: 'Update Found', 
-                            status: 'available',
-                            localVersion: currentVer, // Explicit name
-                            remoteVersion: newVer     // Explicit name
-                        });
-                    }
+                if (localVer !== remoteVer) {
+                    // Update Available
+                    if (mainWindow) mainWindow.webContents.send('update-message', { 
+                        text: 'Update Found', 
+                        status: 'available', 
+                        localVersion: localVer, 
+                        remoteVersion: remoteVer 
+                    });
                 } else {
-                    console.log('[Updater] Up to date.');
+                    // Up To Date
                     if (mainWindow) mainWindow.webContents.send('update-message', { 
                         text: 'You are up to date!', 
                         status: 'uptodate',
-                        localVersion: currentVer
+                        localVersion: localVer // <--- Sends the real version (e.g. 0.0.1)
                     });
                 }
             } catch (e) {
@@ -471,6 +431,8 @@ async function downloadUpdates() {
             await downloadFile(file);
         }
         if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Restarting...', status: 'ready' });
+        
+        // Wait 1s for the UI to show "Restarting" then reboot
         setTimeout(() => { app.relaunch(); app.exit(0); }, 1000);
     } catch (err) {
         if (mainWindow) mainWindow.webContents.send('update-message', { text: 'Failed: ' + err.message, status: 'error' });
@@ -499,9 +461,6 @@ ipcMain.on('check-for-updates', () => checkForCodeUpdates());
 ipcMain.on('start-download', () => downloadUpdates());
 ipcMain.on('restart-app', () => { app.relaunch(); app.exit(0); });
 
-// 1. Event Listeners
-
-// 2. Commands from Frontend
-
+// APP LIFECYCLE
 app.on('ready', createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
