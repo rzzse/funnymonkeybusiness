@@ -4,7 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
-let streamActive = false; 
+let streamActive = false;
+let subtitlesEnabled = false; // Off by default — user toggles on
 
 // --- 2. BASELINE COORDINATES (Calibrated for 1920x1080) ---
 const REF_W = 1920;
@@ -165,102 +166,109 @@ async function createWindow() {
     });
 
     // --- MASTER SNIPER LOOP (5x per second) ---
-    // LOOP GUARD: Prevents async pile-up that causes lag on the Pi.
-    // If a tick's CDP calls are still running when the next tick fires,
-    // we skip that tick rather than stacking another async chain on top.
-    let isLoopRunning = false;
-
     setInterval(async () => {
         if (!mainWindow || mainWindow.isDestroyed()) return;
-        if (isLoopRunning) return; // ← CORE FIX: skip if previous tick isn't done
-        isLoopRunning = true;
+        
+        const frames = mainWindow.webContents.mainFrame.frames;
+        let needsUnmute = false;
+        let playerReady = false;
+        let timeData = null;
 
-        try {
-            const frames = mainWindow.webContents.mainFrame.frames;
-            let needsUnmute = false;
-            let playerReady = false;
-            let timeData = null;
+        for (const frame of frames) {
+            try {
+                // A. CLEANUP
+                await frame.executeJavaScript(`
+                    (() => {
+                        const targets = ['div.flex.w-full.items-center.px-2.pb-2','div[data-media-time-slider]','button[data-media-tooltip="seek"]','button[aria-label="Play"]','button[data-media-tooltip="play"]'];
+                        targets.forEach(s => document.querySelectorAll(s).forEach(el => { if(el.style.opacity!=='0') { el.style.opacity='0'; el.style.pointerEvents='auto'; el.style.cursor='none'; }}));
+                        document.querySelectorAll('div').forEach(d => { if(parseInt(window.getComputedStyle(d).zIndex)>2000000000) d.remove(); });
+                    })();
+                `);
 
-            for (const frame of frames) {
-                try {
-                    // A. CLEANUP
-                    await frame.executeJavaScript(`
-                        (() => {
+                // B. CHECK STATUS
+                const status = await frame.executeJavaScript(`
+                    (() => {
+                        const v = document.querySelector('video');
+                        if (!v || v.readyState < 1) return { ready: false };
+                        const m = document.querySelector('[data-state="muted"]') || document.querySelector('button[aria-label*="unmute" i]');
+                        return { ready: true, isMuted: (v.muted || !!m), curr: v.currentTime, total: v.duration, paused: v.paused };
+                    })();
+                `);
+
+                if (status && status.ready) {
+                    playerReady = true;
+                    if (status.isMuted) needsUnmute = true;
+                    if (status.total > 0) timeData = { curr: status.curr, total: status.total, paused: status.paused };
+                }
+
+                await frame.executeJavaScript(`
+                    (() => {
+                        try {
+                            const noop = () => { console.log("Blocked Fullscreen Attempt"); };
+                            window.HTMLElement.prototype.requestFullscreen = noop;
+                            window.HTMLElement.prototype.webkitRequestFullscreen = noop;
+                            window.HTMLElement.prototype.mozRequestFullScreen = noop;
+                            window.HTMLElement.prototype.msRequestFullscreen = noop;
+                            if (window.HTMLVideoElement) {
+                                window.HTMLVideoElement.prototype.webkitEnterFullscreen = noop;
+                                window.HTMLVideoElement.prototype.enterFullscreen = noop;
+                            }
                             const targets = ['div.flex.w-full.items-center.px-2.pb-2','div[data-media-time-slider]','button[data-media-tooltip="seek"]','button[aria-label="Play"]','button[data-media-tooltip="play"]'];
-                            targets.forEach(s => document.querySelectorAll(s).forEach(el => { if(el.style.opacity!=='0') { el.style.opacity='0'; el.style.pointerEvents='auto'; el.style.cursor='none'; }}));
-                            document.querySelectorAll('div').forEach(d => { if(parseInt(window.getComputedStyle(d).zIndex)>2000000000) d.remove(); });
-                        })();
-                    `);
+                            targets.forEach(s => document.querySelectorAll(s).forEach(el => { 
+                                if(el.style.opacity!=='0') { el.style.opacity='0'; el.style.pointerEvents='auto'; el.style.cursor='none'; }
+                            }));
+                            document.querySelectorAll('div').forEach(d => { 
+                                if(parseInt(window.getComputedStyle(d).zIndex)>2000000000) d.remove(); 
+                            });
+                        } catch(err) {}
+                    })();
+                `).catch(() => {});
 
-                    // B. CHECK STATUS
-                    const status = await frame.executeJavaScript(`
-                        (() => {
-                            const v = document.querySelector('video');
-                            if (!v || v.readyState < 1) return { ready: false };
-                            const m = document.querySelector('[data-state="muted"]') || document.querySelector('button[aria-label*="unmute" i]');
-                            return { ready: true, isMuted: (v.muted || !!m), curr: v.currentTime, total: v.duration, paused: v.paused };
-                        })();
-                    `);
-
-                    if (status && status.ready) {
-                        playerReady = true;
-                        if (status.isMuted) needsUnmute = true;
-                        if (status.total > 0) timeData = { curr: status.curr, total: status.total, paused: status.paused };
-                    }
-
-                    await frame.executeJavaScript(`
-                        (() => {
-                            try {
-                                const noop = () => { console.log("Blocked Fullscreen Attempt"); };
-                                window.HTMLElement.prototype.requestFullscreen = noop;
-                                window.HTMLElement.prototype.webkitRequestFullscreen = noop;
-                                window.HTMLElement.prototype.mozRequestFullScreen = noop;
-                                window.HTMLElement.prototype.msRequestFullscreen = noop;
-                                if (window.HTMLVideoElement) {
-                                    window.HTMLVideoElement.prototype.webkitEnterFullscreen = noop;
-                                    window.HTMLVideoElement.prototype.enterFullscreen = noop;
+                // SUBTITLE CONTROL — toggle captions element visibility
+                await frame.executeJavaScript(`
+                    (() => {
+                        try {
+                            const caps = document.querySelector('[data-part="captions"]');
+                            if (caps) {
+                                if (${subtitlesEnabled}) {
+                                    caps.style.removeProperty('opacity');
+                                    caps.style.removeProperty('display');
+                                } else {
+                                    caps.style.setProperty('opacity', '0', 'important');
+                                    caps.style.setProperty('display', 'none', 'important');
                                 }
-                                const targets = ['div.flex.w-full.items-center.px-2.pb-2','div[data-media-time-slider]','button[data-media-tooltip="seek"]','button[aria-label="Play"]','button[data-media-tooltip="play"]'];
-                                targets.forEach(s => document.querySelectorAll(s).forEach(el => { 
-                                    if(el.style.opacity!=='0') { el.style.opacity='0'; el.style.pointerEvents='auto'; el.style.cursor='none'; }
-                                }));
-                                document.querySelectorAll('div').forEach(d => { 
-                                    if(parseInt(window.getComputedStyle(d).zIndex)>2000000000) d.remove(); 
-                                });
-                            } catch(err) {}
-                        })();
-                    `).catch(() => {});
-                } catch (e) { }
+                            }
+                        } catch(e) {}
+                    })();
+                `).catch(() => {});
+            } catch (e) { }
+        }
+
+        if (playerReady) {
+            // 1. AUTO-UNMUTE
+            if (needsUnmute) {
+                console.log("🔇 Unmuting (Scaled)...");
+                const mutePos = getScaledCoords(BASE_MUTE_X, BASE_MUTE_Y);
+                const volMaxPos = getScaledCoords(BASE_VOL_MAX_X, BASE_VOL_MAX_Y);
+                await simulateClick(mutePos.x, mutePos.y);
+                await new Promise(r => setTimeout(r, 50));
+                await simulateClick(volMaxPos.x, volMaxPos.y);
             }
 
-            if (playerReady) {
-                // 1. AUTO-UNMUTE
-                if (needsUnmute) {
-                    console.log("🔇 Unmuting (Scaled)...");
-                    const mutePos = getScaledCoords(BASE_MUTE_X, BASE_MUTE_Y);
-                    const volMaxPos = getScaledCoords(BASE_VOL_MAX_X, BASE_VOL_MAX_Y);
-                    await simulateClick(mutePos.x, mutePos.y);
-                    await new Promise(r => setTimeout(r, 50));
-                    await simulateClick(volMaxPos.x, volMaxPos.y);
-                }
-
-                // 2. KICKSTART
-                if (!streamActive) {
-                    streamActive = true; 
-                    console.log("⚡ Kickstart (Scaled)...");
-                    const fwdPos = getScaledCoords(BASE_FORWARD_X, BASE_FORWARD_Y);
-                    const rwdPos = getScaledCoords(BASE_REWIND_X, BASE_REWIND_Y);
-                    await simulateClick(fwdPos.x, fwdPos.y);
-                    await new Promise(r => setTimeout(r, 100));
-                    await simulateClick(rwdPos.x, rwdPos.y);
-                    mainWindow.webContents.send('stream-ready-to-fade');
-                }
-
-                // 3. Time Sync
-                if (timeData) mainWindow.webContents.send('video-time-data', timeData);
+            // 2. KICKSTART
+            if (!streamActive) {
+                streamActive = true; 
+                console.log("⚡ Kickstart (Scaled)...");
+                const fwdPos = getScaledCoords(BASE_FORWARD_X, BASE_FORWARD_Y);
+                const rwdPos = getScaledCoords(BASE_REWIND_X, BASE_REWIND_Y);
+                await simulateClick(fwdPos.x, fwdPos.y);
+                await new Promise(r => setTimeout(r, 100));
+                await simulateClick(rwdPos.x, rwdPos.y);
+                mainWindow.webContents.send('stream-ready-to-fade');
             }
-        } finally {
-            isLoopRunning = false; // Always release the guard, even if something threw
+
+            // 3. Time Sync
+            if (timeData) mainWindow.webContents.send('video-time-data', timeData);
         }
     }, 200);
 
@@ -303,10 +311,7 @@ async function createWindow() {
     mainWindow.loadFile('index.html');
 
     // --- IPC & LOGIC ---
-    ipcMain.on('reset-stream-active', () => { 
-        streamActive = false;
-        isLoopRunning = false; // Clear guard in case a tick was stuck mid-await when stream was reset
-    });
+    ipcMain.on('reset-stream-active', () => { streamActive = false; });
     ipcMain.on('get-video-time', async () => {}); 
 
     // --- CONTROLLER ---
@@ -320,17 +325,44 @@ async function createWindow() {
 
                 if (hasVideo) {
                     if (command === 'togglePlay') {
+                        // STEP 1: Try direct JS play/pause (instant, works for many providers)
+                        const directResult = await frame.executeJavaScript(`
+                            (() => {
+                                const v = document.querySelector('video');
+                                if (!v || v.readyState < 1) return null;
+                                const wasPaused = v.paused;
+                                try {
+                                    if (wasPaused) { v.play(); } else { v.pause(); }
+                                    return wasPaused;
+                                } catch(e) { return wasPaused; }
+                            })()
+                        `, true);
+
+                        if (directResult !== null) {
+                            // Give the JS command ~120ms to take effect, then verify
+                            await new Promise(r => setTimeout(r, 120));
+                            const nowPaused = await frame.executeJavaScript(
+                                `(() => { const v = document.querySelector('video'); return v ? v.paused : null; })()`, true
+                            );
+                            // If state flipped, we're done — no clicks needed
+                            if (nowPaused !== null && nowPaused !== directResult) break;
+                        }
+
+                        // STEP 2: Direct JS didn't work (cross-origin embed, blocked autoplay, etc.)
+                        // Fall back to click simulation with fewer, faster retries
                         const center = getScaledCoords(BASE_CENTER_X, BASE_CENTER_Y);
-                        const startPaused = await frame.executeJavaScript(`document.querySelector('video').paused`, true);
-                        const startAudible = mainWindow.webContents.isCurrentlyAudible();
-                        
-                        for (let i = 0; i < 15; i++) {
+                        const startPaused = await frame.executeJavaScript(
+                            `document.querySelector('video').paused`, true
+                        );
+                        for (let i = 0; i < 6; i++) {
                             await simulateClick(center.x, center.y);
-                            await new Promise(r => setTimeout(r, 100));
-                            const nowPaused = await frame.executeJavaScript(`document.querySelector('video').paused`, true);
-                            const nowAudible = mainWindow.webContents.isCurrentlyAudible();
-                            if (nowPaused !== startPaused) break; 
-                            if (startPaused === true && nowAudible === true) break; 
+                            await new Promise(r => setTimeout(r, 80));
+                            const nowPaused = await frame.executeJavaScript(
+                                `document.querySelector('video').paused`, true
+                            );
+                            if (nowPaused !== startPaused) break;
+                            // On last attempt check audio as fallback signal
+                            if (i === 5 && startPaused === true && mainWindow.webContents.isCurrentlyAudible()) break;
                         }
                     } 
                     else if (command === 'rewind') {
@@ -474,6 +506,10 @@ function downloadFile(filename) {
 ipcMain.on('check-for-updates', () => checkForCodeUpdates());
 ipcMain.on('start-download', () => downloadUpdates());
 ipcMain.on('restart-app', () => { app.relaunch(); app.exit(0); });
+ipcMain.on('toggle-subtitles', (event, data) => { 
+    subtitlesEnabled = data.enabled; 
+    console.log(`[Subtitles] ${subtitlesEnabled ? 'ON' : 'OFF'}`);
+});
 
 // APP LIFECYCLE
 app.on('ready', createWindow);

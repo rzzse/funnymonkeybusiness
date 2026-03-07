@@ -390,6 +390,44 @@ body.viewing-mode.user-active #customHUD {
     animation: spin 1s linear infinite;
 }
 
+.provider-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 280px;
+}
+.provider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-family: var(--font-primary);
+    padding: 6px 0;
+}
+.provider-failed {
+    color: rgba(255,255,255,0.3);
+    text-decoration: line-through;
+}
+.provider-trying {
+    color: var(--accent);
+    font-weight: bold;
+}
+.provider-x {
+    color: #e50914;
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+}
+.provider-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
 .hud-progress-bar {
     height: 100%;
     background: var(--progress);
@@ -397,6 +435,486 @@ body.viewing-mode.user-active #customHUD {
     box-shadow: var(--glow);
     transition: width 0.18s linear;
 }
+
+/* =====================================================================
+   RESUME PROMPT OVERLAY
+   ===================================================================== */
+#resumePrompt {
+    position: absolute;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.92);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 32px;
+    z-index: 100003;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+    min-width: 340px;
+}
+#resumePrompt.visible { display: flex; }
+.resume-title {
+    font-family: var(--font-primary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+.resume-time {
+    color: var(--accent);
+    font-size: 36px;
+    font-weight: bold;
+    font-family: var(--font-primary);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px var(--accent);
+}
+.resume-btns {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+}
+.resume-btn {
+    padding: 10px 28px;
+    border-radius: 8px;
+    font-family: var(--font-primary);
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+    letter-spacing: 1px;
+}
+.resume-btn.primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+}
+.resume-btn.secondary {
+    background: transparent;
+    color: var(--text-secondary);
+}
+.resume-btn.nav-focus, .resume-btn:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 18px var(--accent);
+}
+.resume-btn.secondary.nav-focus, .resume-btn.secondary:hover {
+    color: #fff;
+    border-color: #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.2);
+}
+
+/* =====================================================================
+   SLEEP TIMER
+   ===================================================================== */
+#sleepTimerDisplay {
+    position: fixed;
+    top: 24px;
+    right: 30px;
+    background: rgba(0,0,0,0.75);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 16px;
+    font-family: var(--font-primary);
+    font-size: 15px;
+    color: var(--accent);
+    z-index: 100005;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(8px);
+}
+#sleepTimerDisplay.visible { display: flex; }
+#sleepTimerDisplay.warning { 
+    color: #ff6b6b; 
+    border-color: #ff6b6b;
+    animation: pulseUpdate 1s infinite;
+}
+
+/* =====================================================================
+   HUD TITLE
+   ===================================================================== */
+#hudTitleBar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 6px;
+    padding: 0 2px;
+}
+#hudNowPlaying {
+    font-family: var(--font-primary);
+    font-size: 15px;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+/* =====================================================================
+   EPISODE PANEL — Netflix-style left slide-out
+   ===================================================================== */
+#episodePanel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 520px;
+    height: 100vh;
+    background: rgba(10, 10, 10, 0.97);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    z-index: 200001;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 6px 0 40px rgba(0,0,0,0.9);
+    border-right: 1px solid rgba(255,255,255,0.06);
+}
+#episodePanel.open {
+    transform: translateX(0);
+}
+
+/* Dim overlay behind the panel */
+#episodePanelBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 200000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+#episodePanelBackdrop.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.epanel-header {
+    padding: 36px 32px 20px;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.epanel-show-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.epanel-subtitle {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-primary);
+}
+
+/* Season tabs */
+.epanel-season-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex-shrink: 0;
+}
+.epanel-season-tabs::-webkit-scrollbar { display: none; }
+.epanel-season-tab {
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+}
+.epanel-season-tab:hover {
+    color: rgba(255,255,255,0.8);
+}
+.epanel-season-tab.active, .epanel-season-tab.nav-focus {
+    color: #fff;
+    border-bottom-color: var(--accent);
+}
+
+/* Episode list */
+.epanel-episode-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+.epanel-episode-list::-webkit-scrollbar { width: 4px; }
+.epanel-episode-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.epanel-ep-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-radius: 6px;
+    margin: 2px 8px;
+    position: relative;
+}
+.epanel-ep-row:hover {
+    background: rgba(255,255,255,0.06);
+}
+.epanel-ep-row.nav-focus, .epanel-ep-row.is-focused {
+    background: rgba(255,255,255,0.1);
+    outline: none;
+}
+.epanel-ep-row.is-current {
+    background: rgba(229, 9, 20, 0.12);
+}
+.epanel-ep-row.is-current::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+}
+
+.epanel-ep-thumb {
+    width: 120px;
+    height: 68px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #1a1a1a;
+    display: block;
+}
+.epanel-ep-thumb-placeholder {
+    width: 120px;
+    height: 68px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1a1a2e, #111);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.15);
+    font-size: 22px;
+}
+.epanel-ep-info { flex: 1; min-width: 0; }
+.epanel-ep-num {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    font-family: var(--font-primary);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+.epanel-ep-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+}
+.epanel-ep-row.is-current .epanel-ep-name { color: #fff; }
+.epanel-ep-meta {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+}
+.epanel-loading {
+    padding: 40px;
+    text-align: center;
+    color: rgba(255,255,255,0.35);
+    font-family: var(--font-primary);
+    font-size: 14px;
+    letter-spacing: 2px;
+}
+.epanel-nav-hint {
+    padding: 12px 24px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 2px;
+    font-family: var(--font-primary);
+    text-align: center;
+    flex-shrink: 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* =====================================================================
+   SLEEP TIMER MODAL — proper keyboard-navigable modal
+   ===================================================================== */
+#sleepTimerModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 300000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+}
+#sleepTimerModal.visible { display: flex; }
+.sleep-modal-box {
+    background: #111;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 40px 48px;
+    width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+.sleep-modal-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+.sleep-modal-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    font-family: var(--font-primary);
+    letter-spacing: 1px;
+    margin-top: -12px;
+}
+.sleep-modal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.sleep-option-btn {
+    padding: 16px 24px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.7);
+    font-size: 16px;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    outline: none;
+}
+.sleep-option-btn:hover, .sleep-option-btn.nav-focus {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--accent);
+    color: #fff;
+    transform: translateX(4px);
+}
+.sleep-option-icon {
+    font-size: 20px;
+    width: 28px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.sleep-cancel-btn {
+    padding: 12px;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.3);
+    font-size: 14px;
+    font-family: var(--font-primary);
+    cursor: pointer;
+    letter-spacing: 2px;
+    text-align: center;
+    transition: color 0.2s;
+}
+.sleep-cancel-btn:hover, .sleep-cancel-btn.nav-focus { color: #fff; }
+
+/* =====================================================================
+   SETTINGS MODAL — expanded, keyboard-navigable
+   ===================================================================== */
+#settingsModal .modal-content {
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+.settings-section-title {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-family: var(--font-primary);
+    margin: 24px 0 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.settings-section-title:first-child { margin-top: 0; }
+.setting-row { 
+    position: relative;
+}
+.setting-row.nav-focus {
+    background: rgba(255,255,255,0.04);
+    border-radius: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+    margin-left: -10px;
+    margin-right: -10px;
+}
+.setting-hint {
+    font-size: 12px;
+    color: rgba(255,255,255,0.3);
+    font-family: var(--font-primary);
+    margin-top: 2px;
+}
+
+/* =====================================================================
+   HUD CC + EPISODES BUTTONS
+   ===================================================================== */
+.hud-side-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    color: rgba(255,255,255,0.5);
+    font-family: var(--font-primary);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.hud-side-btn:hover, .hud-side-btn.nav-focus {
+    background: rgba(255,255,255,0.1);
+    border-color: var(--accent);
+    color: #fff;
+    transform: scale(1.05);
+}
+.hud-side-btn.cc-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+}
+.hud-side-btn.nav-focus {
+    box-shadow: 0 0 12px var(--accent);
+}
+/* hud-controls uses flex so CC/Episodes are natural right-side items */
 
 
 
@@ -506,7 +1024,9 @@ body:not(.user-active) .grid-item:hover {
         .profile-card:hover .profile-avatar, .profile-card:focus .profile-avatar { border-color: #fff; box-shadow: 0 0 20px rgba(255,255,255,0.3); }
         .profile-avatar { width: 150px; height: 150px; border-radius: 8px; background-size: cover; background-position: center; border: 3px solid transparent; transition: all 0.2s; background-color: #222; position: relative; overflow: hidden; }
         .profile-name { font-size: 1.5rem; color: #808080; transition: color 0.2s; }
+        .profile-stats { font-size: 0.9rem; color: #444; font-family: var(--font-primary, 'Consolas', monospace); letter-spacing: 1px; transition: color 0.2s; }
         .profile-card:hover .profile-name { color: #fff; }
+        .profile-card:hover .profile-stats { color: #666; }
         
         .profile-gate.manage-mode .profile-avatar { opacity: 0.5; }
         .profile-gate.manage-mode .profile-card:hover .profile-avatar { opacity: 1; }
@@ -866,7 +1386,14 @@ select.editing {
     background: #000;
 }
 .player { width: 100%; height: 70vh; min-height: 560px; border: none; transition: filter 0.5s ease-in-out; }
-        .player.quality-enhanced { filter: blur(0.2px) contrast(1.07) saturate(1.1) brightness(1.3) hue-rotate(-4deg) sepia(0.1) drop-shadow(0 0 0.5px #ffffff); }
+        /* =====================================================================
+           QUALITY ENHANCER — adaptive CSS filter pipeline on the iframe
+           ===================================================================== */
+        .player { transition: filter 0.8s ease; }
+        .player.quality-enhanced {
+            /* Base is set by JS — this is just the transition anchor */
+            filter: none;
+        }
         .status { 
     position: fixed; /* Changed from absolute to fixed */
     top: 50%; 
@@ -1187,6 +1714,7 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
                     <div id="logoMenu" class="logo-menu">
                         <div class="logo-menu-item" onclick="profilePlaceholder(); toggleLogoMenu()" tabindex="0">profiles</div>
                         <div class="logo-menu-item" onclick="openSettings(); toggleLogoMenu()" tabindex="0">settings</div>
+                        <div class="logo-menu-item" onclick="openSleepTimerModal(); toggleLogoMenu()" tabindex="0" id="sleepTimerMenuItem">sleep timer</div>
                         <div class="logo-menu-item" onclick="handleUpdateClick(); toggleLogoMenu()" tabindex="0">check for updates</div>
                         <div class="logo-menu-item" onclick="resetAllData(); toggleLogoMenu()" tabindex="0">reset data</div>
                     </div>
@@ -1220,6 +1748,16 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
         
         <div id="clickShield" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index: 9998; cursor: none;" onclick="hudTogglePlay()"></div>
         <iframe id="player" class="player" src="" frameborder="0" scrolling="no" allow="autoplay; fullscreen" allowfullscreen></iframe>
+
+        <!-- Resume Prompt -->
+        <div id="resumePrompt">
+            <div class="resume-title">resume playback?</div>
+            <div class="resume-time" id="resumeTimeDisplay">0:00</div>
+            <div class="resume-btns">
+                <button class="resume-btn primary" id="resumeYesBtn" onclick="confirmResume(true)">resume</button>
+                <button class="resume-btn secondary" id="resumeNoBtn" onclick="confirmResume(false)">from start</button>
+            </div>
+        </div>
     </div>
 
     <div class="detail-info-tile">
@@ -1268,8 +1806,12 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
         <div class="modal-content">
             <span class="close" onclick="closeSettings()" tabindex="0">×</span>
             <h2>> stream preferences</h2>
-            <div class="setting-row">
-                <div class="setting-label">system theme</div>
+
+            <div class="settings-section-title">appearance</div>
+            <div class="setting-row" data-setting="theme">
+                <div>
+                    <div class="setting-label">system theme</div>
+                </div>
                 <select id="themeSelect" onchange="applyTheme(this.value)" tabindex="0">
                     <option value="console">CONSOLE (DEFAULT)</option>
                     <option value="matrix-green">MATRIX GREEN</option>
@@ -1285,27 +1827,101 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
                     <option value="golden-ember">GOLDEN EMBER</option>
                 </select>
             </div>
-            <div class="setting-row">
-                <div class="setting-label">primary stream quality</div>
-                <select id="qualityPref" tabindex="0">
-                    <option value="best">best quality (vidsrc priority)</option>
-                    <option value="fast">fast load</option>
-                    <option value="auto">auto balance</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <div class="setting-label">performance mode (reduce motion)</div>
+            <div class="setting-row" data-setting="perf">
+                <div>
+                    <div class="setting-label">reduce motion</div>
+                    <div class="setting-hint">disables animations for better performance</div>
+                </div>
                 <label class="switch">
                     <input type="checkbox" id="perfModeToggle" onchange="togglePerfMode()"> 
                     <span class="slider"></span>
                 </label>
             </div>
-            <div class="setting-row">
-                <div class="setting-label">quality enhancement (experimental)</div>
+
+            <div class="settings-section-title">playback</div>
+            <div class="setting-row" data-setting="quality">
+                <div>
+                    <div class="setting-label">stream quality priority</div>
+                    <div class="setting-hint">determines which server is tried first</div>
+                </div>
+                <select id="qualityPref" tabindex="0">
+                    <option value="best">best quality</option>
+                    <option value="fast">fastest load</option>
+                    <option value="auto">balanced</option>
+                </select>
+            </div>
+            <div class="setting-row" data-setting="autoplay">
+                <div>
+                    <div class="setting-label">autoplay next episode</div>
+                    <div class="setting-hint">automatically advance to the next episode</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="autoplayToggle"> 
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" data-setting="seek">
+                <div>
+                    <div class="setting-label">seek step (arrow keys)</div>
+                    <div class="setting-hint">how far left/right skips when seeking</div>
+                </div>
+                <select id="seekStepSelect" tabindex="0">
+                    <option value="10">10 seconds</option>
+                    <option value="15">15 seconds</option>
+                    <option value="30">30 seconds</option>
+                </select>
+            </div>
+            <div class="setting-row" data-setting="hudTimeout">
+                <div>
+                    <div class="setting-label">hud hide delay</div>
+                    <div class="setting-hint">how long the controls stay visible</div>
+                </div>
+                <select id="hudTimeoutSelect" tabindex="0">
+                    <option value="3000">3 seconds</option>
+                    <option value="5000">5 seconds</option>
+                    <option value="8000">8 seconds</option>
+                    <option value="0">always visible</option>
+                </select>
+            </div>
+
+            <div class="settings-section-title">subtitles</div>
+            <div class="setting-row" data-setting="subtitles">
+                <div>
+                    <div class="setting-label">subtitles / closed captions</div>
+                    <div class="setting-hint">show captions when available</div>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="subtitleToggle" onchange="toggleSubtitlesFromSettings(this.checked)"> 
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-section-title">quality</div>
+            <div class="setting-row" data-setting="enhance">
+                <div>
+                    <div class="setting-label">adaptive picture enhancement</div>
+                    <div class="setting-hint">applies contrast, saturation & brightness curves tuned per genre (dark thrillers, bright comedies, etc.) — smooth transition, no jarring pops</div>
+                </div>
                 <label class="switch">
                     <input type="checkbox" id="aiUpscalingToggle" tabindex="0"> 
                     <span class="slider"></span>
                 </label>
+            </div>
+
+            <div class="settings-section-title">data</div>
+            <div class="setting-row" data-setting="clearHistory">
+                <div>
+                    <div class="setting-label">clear watch history</div>
+                    <div class="setting-hint">removes all continue watching data</div>
+                </div>
+                <button class="btn-danger" onclick="clearWatchHistory()" style="padding:8px 18px;font-size:14px;flex:none;">clear</button>
+            </div>
+            <div class="setting-row" data-setting="clearWatchlist">
+                <div>
+                    <div class="setting-label">clear my list</div>
+                    <div class="setting-hint">removes all saved watchlist items</div>
+                </div>
+                <button class="btn-danger" onclick="clearWatchlist()" style="padding:8px 18px;font-size:14px;flex:none;">clear</button>
             </div>
         </div>
     </div>
@@ -1353,6 +1969,7 @@ select { padding: 16px 32px; border: 2px solid var(--accent); background: var(--
 
     <div id="globalContextMenu" class="context-menu">
         <div class="context-menu-item danger" id="cmUnwatch" onclick="handleMenuAction('unwatch')">unwatch</div>
+        <div class="context-menu-item" id="cmWatchlist" onclick="handleMenuAction('watchlist')">+ my list</div>
         <div class="context-menu-item" onclick="handleMenuAction('block')">don't recommend</div>
         <div class="context-menu-item" onclick="handleMenuAction('info')">more info</div>
         <div class="context-menu-item" style="border-top:1px solid #333; margin-top:5px;" onclick="hideContextMenu()">close</div>
@@ -1596,7 +2213,12 @@ if(bootScreen) {
                 div.className = 'profile-card';
                 div.tabIndex = 0;
                 let editOverlay = isManageMode ? `<div class="profile-edit-icon">✎</div>` : '';
-                div.innerHTML = `<div class="profile-avatar" style="background-image: url('${p.avatar}'); border-color: ${p.color}">${editOverlay}</div><div class="profile-name">${p.name}</div>`;
+                // Compute watch stats for this profile
+                const profileHistory = JSON.parse(localStorage.getItem(`ot_history_${p.id}`) || '[]');
+                const totalSeconds = profileHistory.reduce((sum, e) => sum + (e.time || 0), 0);
+                const hoursWatched = Math.round(totalSeconds / 3600 * 10) / 10;
+                const statsText = hoursWatched > 0 ? `${hoursWatched}h watched` : 'no watch history';
+                div.innerHTML = `<div class="profile-avatar" style="background-image: url('${p.avatar}'); border-color: ${p.color}">${editOverlay}</div><div class="profile-name">${p.name}</div><div class="profile-stats">${statsText}</div>`;
                 div.onclick = () => { if (isManageMode) openEditProfile(p); else selectProfile(p); };
                 div.onkeydown = (e) => { if(e.key === 'Enter') { if (isManageMode) openEditProfile(p); else selectProfile(p); }};
                 container.appendChild(div);
@@ -1784,15 +2406,18 @@ function forceNextEpisode() {
         const PROVIDERS = [
             /* 0 */ { name: "VidLink",       url: (id, tv, s, e) => tv ? `https://vidlink.pro/tv/${id}/${s}/${e}`                                              : `https://vidlink.pro/movie/${id}` },
             /* 1 */ { name: "VidSrc.to",     url: (id, tv, s, e) => tv ? `https://vidsrc.to/embed/tv/${id}/${s}/${e}`                                          : `https://vidsrc.to/embed/movie/${id}` },
-            /* 2 */ { name: "VidSrc.net",    url: (id, tv, s, e) => tv ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}`                                         : `https://vidsrc.net/embed/movie/${id}` },
-            /* 3 */ { name: "VidSrc.me",     url: (id, tv, s, e) => tv ? `https://vidsrc.me/embed/tv/${id}/${s}-${e}`                                          : `https://vidsrc.me/embed/movie/${id}` },
-            /* 4 */ { name: "VidSrc.cc",     url: (id, tv, s, e) => tv ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`                                       : `https://vidsrc.cc/v2/embed/movie/${id}` },
+            /* 2 */ { name: "VidSrc.me",     url: (id, tv, s, e) => tv ? `https://vidsrc.me/embed/tv/${id}-${s}-${e}`                                          : `https://vidsrc.me/embed/movie/${id}` },
+            /* 3 */ { name: "VidSrc.cc",     url: (id, tv, s, e) => tv ? `https://vidsrc.cc/v2/embed/tv/${id}/${s}/${e}`                                       : `https://vidsrc.cc/v2/embed/movie/${id}` },
+            /* 4 */ { name: "VidSrc.xyz",    url: (id, tv, s, e) => tv ? `https://vidsrc.xyz/embed/tv?tmdb=${id}&season=${s}&episode=${e}`                    : `https://vidsrc.xyz/embed/movie?tmdb=${id}` },
             /* 5 */ { name: "AutoEmbed",     url: (id, tv, s, e) => tv ? `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`                                        : `https://autoembed.co/movie/tmdb/${id}` },
             /* 6 */ { name: "Embed.su",      url: (id, tv, s, e) => tv ? `https://embed.su/embed/tv/${id}/${s}/${e}`                                           : `https://embed.su/embed/movie/${id}` },
-            /* 7 */ { name: "SuperEmbed",    url: (id, tv, s, e) => tv ? `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`         : `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1` },
-            /* 8 */ { name: "MultiEmbed",    url: (id, tv, s, e) => tv ? `https://multiembed.mov/embed/tv/${id}/${s}/${e}?tmdb=1`                              : `https://multiembed.mov/embed/movie/${id}?tmdb=1` },
-            /* 9 */ { name: "2Embed",        url: (id, tv, s, e) => tv ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`                                   : `https://www.2embed.cc/embed/${id}` },
-            /* 10*/ { name: "SmashyStream",  url: (id, tv, s, e) => tv ? `https://smashystream.com/tv/${id}/${s}/${e}`                                         : `https://smashystream.com/embed/movie/${id}` },
+            /* 7 */ { name: "MoviesAPI",     url: (id, tv, s, e) => tv ? `https://moviesapi.club/tv/${id}-${s}-${e}`                                           : `https://moviesapi.club/movie/${id}` },
+            /* 8 */ { name: "VidBinge",      url: (id, tv, s, e) => tv ? `https://vidbinge.dev/embed/tv/${id}/${s}/${e}`                                       : `https://vidbinge.dev/embed/movie/${id}` },
+            /* 9 */ { name: "SuperEmbed",    url: (id, tv, s, e) => tv ? `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1&s=${s}&e=${e}`         : `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1` },
+            /*10 */ { name: "MultiEmbed",    url: (id, tv, s, e) => tv ? `https://multiembed.mov/embed/tv/${id}/${s}/${e}?tmdb=1`                              : `https://multiembed.mov/embed/movie/${id}?tmdb=1` },
+            /*11 */ { name: "2Embed",        url: (id, tv, s, e) => tv ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`                                   : `https://www.2embed.cc/embed/${id}` },
+            /*12 */ { name: "VidSrc.net",    url: (id, tv, s, e) => tv ? `https://vidsrc.net/embed/tv/${id}/${s}/${e}`                                         : `https://vidsrc.net/embed/movie/${id}` },
+            /*13 */ { name: "SmashyStream",  url: (id, tv, s, e) => tv ? `https://smashystream.com/tv/${id}/${s}/${e}`                                         : `https://smashystream.com/embed/movie/${id}` },
         ];
 
         let currentType = 'movie';
@@ -1887,6 +2512,7 @@ function forceNextEpisode() {
 
         let continueWatching = [];
         let blockedShows = JSON.parse(localStorage.getItem('ot_blockedShows') || '[]');
+        let watchlist = JSON.parse(localStorage.getItem('ot_watchlist') || '[]');
         let currentPage = 1;
         let currentQuery = '';
         let currentAction = 'trending';
@@ -1906,10 +2532,9 @@ function forceNextEpisode() {
         }
 
         function getProviderOrder() {
-            // Indices map to PROVIDERS array above (0–10)
-            if (qualityPref === 'best')   return [0, 1, 3, 6, 5, 2, 4, 8, 7, 10, 9];   // VidLink first, VidSrc variants, Embed.su, then fallbacks
-            if (qualityPref === 'fast')   return [1, 3, 4, 0, 5, 6, 2, 8, 7, 9, 10];   // VidSrc.to/me fastest, then rest
-            return                               [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];   // balanced: just go in order
+            if (qualityPref === 'best')   return [0, 1, 2, 4, 5, 6, 7, 8, 3, 9, 10, 11, 12, 13];
+            if (qualityPref === 'fast')   return [1, 2, 3, 4, 0, 5, 7, 8, 6, 9, 10, 11, 12, 13];
+            return                               [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
         }
 
         function setStatus(text, loading = false) {
@@ -1965,29 +2590,154 @@ function forceNextEpisode() {
     });
 }
 
+        // Track which providers have been tried this session for the visual stack
+        let providerAttemptLog = [];
         let playbackStartTime = 0;
         let fallbackInterval = null;
 
+        function renderProviderStack() {
+            const status = document.getElementById('status');
+            let html = '';
+            providerAttemptLog.forEach((entry, i) => {
+                const isLast = i === providerAttemptLog.length - 1;
+                if (isLast) {
+                    html += `<div class="provider-row provider-trying"><span class="provider-spinner"></span> ${entry.name}</div>`;
+                } else {
+                    html += `<div class="provider-row provider-failed"><span class="provider-x">✕</span> ${entry.name}</div>`;
+                }
+            });
+            status.innerHTML = `<div class="provider-stack">${html}</div>`;
+            status.style.display = 'block';
+        }
+
         function tryProvider(indices, idx = 0) {
-            if (idx >= indices.length) { setStatus("no streams available 😔 try another title."); return; }
+            if (idx >= indices.length) { 
+                const status = document.getElementById('status');
+                status.innerHTML = `<div class="provider-stack-done">no streams available for this title.<br><span style="font-size:16px;opacity:0.6;">try a different server or go back.</span></div>`;
+                status.style.display = 'block';
+                return; 
+            }
             const pIdx = indices[idx];
             currentProviderName = PROVIDERS[pIdx].name;
-            setStatus(`loading ${currentProviderName}...`, true);
             loadStartTime = Date.now();
+            providerAttemptLog.push({ name: currentProviderName.toLowerCase() });
+            renderProviderStack();
+
             const url = PROVIDERS[pIdx].url(currentId, currentType === 'tv', currentSeason, currentEpisode); 
             const player = document.getElementById('player');
             player.src = url;
             const timeout = setTimeout(() => tryProvider(indices, idx + 1), 7000); 
             player.onload = () => {
                 clearTimeout(timeout);
-                setTimeout(() => { hideStatus(); updateServerStats(); setupResumeTracking(); player.focus(); }, 2000);
+                setTimeout(() => { 
+                    providerAttemptLog = [];
+                    hideStatus(); 
+                    updateServerStats(); 
+                    setupResumeTracking(); 
+                    player.focus(); 
+                }, 2000);
             };
         }
 
+        // =================================================================
+        // QUALITY ENHANCER — Adaptive CSS filter pipeline
+        // CSS filters on the iframe boundary are the correct method for
+        // cross-origin embeds; WebGL pixel sampling is blocked by CORS.
+        // We adapt the filter curve based on content metadata (genre, 
+        // runtime, vote avg) so dark thrillers get different treatment
+        // than bright comedies. Values lerp smoothly over 0.8s (CSS transition).
+        // =================================================================
+
+        // Enhancer state
+        let _qeProfile = { contrast: 1.08, saturate: 1.15, brightness: 1.02, sharp: 0 };
+        let _qeIntensity = parseFloat(localStorage.getItem('ot_qe_intensity') || '1.0'); // 0.5 – 2.0
+        let _qeRAF = null;
+
         function updatePlayerQuality() {
             const player = document.getElementById('player');
-            if (aiUpscalingEnabled) player.classList.add('quality-enhanced'); 
-            else player.classList.remove('quality-enhanced');
+            if (!player) return;
+            if (!aiUpscalingEnabled) {
+                player.style.filter = '';
+                if (_qeRAF) { cancelAnimationFrame(_qeRAF); _qeRAF = null; }
+                return;
+            }
+            _applyQEFilter(player);
+        }
+
+        // Build filter string from current profile + intensity
+        function _buildQEFilter(p, intensity) {
+            const lerp = (base, val) => 1 + (val - 1) * intensity;
+            const contrast  = lerp(1, p.contrast).toFixed(3);
+            const saturate  = lerp(1, p.saturate).toFixed(3);
+            const brightness = lerp(1, p.brightness).toFixed(3);
+            // Unsharp mask via drop-shadow + blur chain isn't great at iframe boundary
+            // but a very subtle blur(0) + drop-shadow gives the edge pop effect
+            const shadow = intensity > 0.8 ? `drop-shadow(0 0 ${(0.3 * intensity).toFixed(2)}px rgba(255,255,255,0.15))` : '';
+            return `contrast(${contrast}) saturate(${saturate}) brightness(${brightness}) ${shadow}`.trim();
+        }
+
+        function _applyQEFilter(player) {
+            player.style.filter = _buildQEFilter(_qeProfile, _qeIntensity);
+        }
+
+        // Call this after showDetail resolves — adapt the curve to the content
+        function calibrateQEProfile(item, type) {
+            if (!item) return;
+            const genres = (item.genres || item.genre_ids || []).map(g => typeof g === 'object' ? g.id : g);
+            // Genre ids: 28=Action,12=Adventure,16=Animation,35=Comedy,80=Crime,
+            //            99=Documentary,18=Drama,10751=Family,14=Fantasy,27=Horror,
+            //            10402=Music,9648=Mystery,10749=Romance,878=Sci-Fi,
+            //            53=Thriller,10752=War,37=Western
+            const isDark   = genres.some(g => [27,53,80,9648,10752].includes(g));
+            const isBright = genres.some(g => [35,16,10751,10402,10749].includes(g));
+            const isAction = genres.some(g => [28,12,878].includes(g));
+            const voteAvg  = item.vote_average || 7;
+
+            let contrast = 1.08, saturate = 1.15, brightness = 1.02;
+
+            if (isDark) {
+                // Dark content: higher contrast, more saturation to recover shadow detail
+                contrast  = 1.14;
+                saturate  = 1.22;
+                brightness = 1.04;
+            } else if (isBright) {
+                // Bright/comedy: mild touch, protect highlights
+                contrast  = 1.05;
+                saturate  = 1.10;
+                brightness = 0.99;
+            } else if (isAction) {
+                // Action: punchy contrast, vivid colour, slight brightness
+                contrast  = 1.12;
+                saturate  = 1.20;
+                brightness = 1.03;
+            }
+
+            // High-rated content (>8): trust the grading, be more subtle
+            if (voteAvg > 8.0) {
+                contrast  = 1 + (contrast - 1) * 0.6;
+                saturate  = 1 + (saturate - 1) * 0.6;
+            }
+
+            // Smooth lerp into new profile over several frames
+            const target = { contrast, saturate, brightness };
+            const STEPS = 30;
+            let step = 0;
+            if (_qeRAF) cancelAnimationFrame(_qeRAF);
+            const animate = () => {
+                if (!aiUpscalingEnabled) return;
+                step++;
+                const t = Math.min(1, step / STEPS);
+                const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out
+                _qeProfile = {
+                    contrast:   _qeProfile.contrast   + (target.contrast   - _qeProfile.contrast)   * ease,
+                    saturate:   _qeProfile.saturate   + (target.saturate   - _qeProfile.saturate)   * ease,
+                    brightness: _qeProfile.brightness + (target.brightness - _qeProfile.brightness) * ease,
+                };
+                const p = document.getElementById('player');
+                if (p) _applyQEFilter(p);
+                if (step < STEPS) _qeRAF = requestAnimationFrame(animate);
+            };
+            _qeRAF = requestAnimationFrame(animate);
         }
 
         function toggleFullscreen() {
@@ -2008,6 +2758,7 @@ function forceNextEpisode() {
 
     // Reset stall watchdog for the fresh stream
     _resetStallWatchdog();
+    providerAttemptLog = [];
     
     // --- FIX: METADATA FALLBACK INITIALIZATION ---
     // If TMDB says it's 42 mins (2520s), we start with that.
@@ -2023,9 +2774,8 @@ function forceNextEpisode() {
 
     playbackStartTime = Date.now();
     document.getElementById('nextEpBtn').classList.remove('visible');
-    
-    saveProgress(currentId, currentType, currentSeason, currentEpisode, 1, currentVideoTotalRuntime);
-    updatePlayerQuality(); 
+    updatePlayerQuality();
+    if (aiUpscalingEnabled) calibrateQEProfile(item, type);
     startFocusSentinel();
     
     const order = getProviderOrder();
@@ -2049,13 +2799,36 @@ function forceNextEpisode() {
         }
 
         function setupResumeTracking() {
-            const player = document.getElementById('player');
-            const key = `${currentType}_${currentId}${currentSeason ? `_s${currentSeason}e${currentEpisode}` : ''}`;
-            const saved = continueWatching.find(c => c.key === key);
-            if (saved && saved.time > 5) { 
-                setTimeout(() => { try { player.contentWindow.postMessage(JSON.stringify({action: 'seek', time: saved.time}), '*'); } catch (e) { } }, 4000);
+            // If we have a pending resume time, show the prompt overlay
+            if (window._pendingResumeTime && window._pendingResumeTime > 30) {
+                const resumeTime = window._pendingResumeTime;
+                window._pendingResumeTime = null;
+                window._resumeTargetTime = resumeTime;
+
+                const prompt = document.getElementById('resumePrompt');
+                const timeDisplay = document.getElementById('resumeTimeDisplay');
+                if (prompt && timeDisplay) {
+                    const m = Math.floor(resumeTime / 60);
+                    const s = Math.floor(resumeTime % 60);
+                    timeDisplay.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+                    prompt.classList.add('visible');
+                    // Auto-dismiss after 8 seconds and resume
+                    window._resumeAutoTimer = setTimeout(() => confirmResume(true), 8000);
+                }
             }
-            setInterval(() => { try { player.contentWindow.postMessage(JSON.stringify({action: 'getTime'}), '*'); } catch (e) {} }, 10000);
+        }
+
+        function confirmResume(doResume) {
+            clearTimeout(window._resumeAutoTimer);
+            const prompt = document.getElementById('resumePrompt');
+            if (prompt) prompt.classList.remove('visible');
+            if (doResume && window._resumeTargetTime > 0) {
+                const percent = Math.max(0, Math.min(1, window._resumeTargetTime / (localState.duration || currentVideoTotalRuntime)));
+                localState.currentTime = window._resumeTargetTime;
+                updateHUDVisuals();
+                window.ipcRenderer.send('video-command', { action: 'seek', percent });
+            }
+            window._resumeTargetTime = 0;
         }
 
         window.addEventListener('message', (e) => {
@@ -2080,9 +2853,20 @@ function forceNextEpisode() {
         });
 
         function stopPlayer() {
-
             kickstartLock = false;
             _resetStallWatchdog();
+            clearTimeout(window._resumeAutoTimer);
+            window._resumeTargetTime = 0;
+            const prompt = document.getElementById('resumePrompt');
+            if (prompt) prompt.classList.remove('visible');
+            // Close episode panel if open
+            if (epanelOpen) closeEpisodePanel();
+            // Clear episode cache (new show will need fresh data)
+            Object.keys(epanelEpisodeCache).forEach(k => delete epanelEpisodeCache[k]);
+            epanelLoadedSeason = null;
+            // Hide episodes button
+            const epBtn = document.getElementById('hudEpisodesBtn');
+            if (epBtn) epBtn.style.display = 'none';
             const player = document.getElementById('player');
             player.src = '';
             player.classList.remove('quality-enhanced'); 
@@ -2092,6 +2876,360 @@ function forceNextEpisode() {
         }
 
         
+
+        // =================================================================
+        // SUBTITLE TOGGLE
+        // =================================================================
+        let subtitlesEnabled = localStorage.getItem('ot_subtitles') === 'true';
+
+        function toggleSubtitles() {
+            subtitlesEnabled = !subtitlesEnabled;
+            localStorage.setItem('ot_subtitles', subtitlesEnabled);
+            applySubtitleState();
+        }
+
+        function toggleSubtitlesFromSettings(val) {
+            subtitlesEnabled = val;
+            localStorage.setItem('ot_subtitles', subtitlesEnabled);
+            applySubtitleState();
+        }
+
+        function applySubtitleState() {
+            window.ipcRenderer.send('toggle-subtitles', { enabled: subtitlesEnabled });
+            const btn = document.getElementById('hudCCBtn');
+            if (btn) {
+                btn.classList.toggle('cc-active', subtitlesEnabled);
+                btn.title = subtitlesEnabled ? 'subtitles on' : 'subtitles off';
+            }
+            const toggle = document.getElementById('subtitleToggle');
+            if (toggle) toggle.checked = subtitlesEnabled;
+        }
+
+        // Sync subtitle state on init
+        applySubtitleState();
+
+        // =================================================================
+        // SLEEP TIMER — proper modal, full keyboard nav
+        // =================================================================
+        let sleepTimerInterval = null;
+        let sleepTimerRemaining = 0;
+        let sleepModalFocusIndex = 0;
+        const SLEEP_OPTIONS = [30, 60, 90, 120]; // minutes
+
+        function openSleepTimerModal() {
+            // If timer is already running, cancel it first
+            if (sleepTimerInterval) {
+                clearInterval(sleepTimerInterval);
+                sleepTimerInterval = null;
+                sleepTimerRemaining = 0;
+                document.getElementById('sleepTimerDisplay').classList.remove('visible', 'warning');
+                document.getElementById('sleepTimerMenuItem').textContent = 'sleep timer';
+                return;
+            }
+            sleepModalFocusIndex = 0;
+            const modal = document.getElementById('sleepTimerModal');
+            modal.classList.add('visible');
+            updateSleepModalFocus();
+        }
+
+        // Keep old name working for any lingering references
+        const openSleepTimer = openSleepTimerModal;
+
+        function closeSleepTimerModal() {
+            document.getElementById('sleepTimerModal').classList.remove('visible');
+        }
+
+        function updateSleepModalFocus() {
+            const btns = document.querySelectorAll('.sleep-option-btn, .sleep-cancel-btn');
+            btns.forEach((b, i) => b.classList.toggle('nav-focus', i === sleepModalFocusIndex));
+        }
+
+        function setSleepTimer(minutes) {
+            closeSleepTimerModal();
+            sleepTimerRemaining = minutes * 60;
+            document.getElementById('sleepTimerMenuItem').textContent = 'sleep timer (active)';
+            updateSleepTimerDisplay();
+            document.getElementById('sleepTimerDisplay').classList.add('visible');
+            sleepTimerInterval = setInterval(() => {
+                sleepTimerRemaining--;
+                updateSleepTimerDisplay();
+                if (sleepTimerRemaining <= 60) document.getElementById('sleepTimerDisplay').classList.add('warning');
+                if (sleepTimerRemaining <= 0) {
+                    clearInterval(sleepTimerInterval);
+                    sleepTimerInterval = null;
+                    document.getElementById('sleepTimerDisplay').classList.remove('visible', 'warning');
+                    document.getElementById('sleepTimerMenuItem').textContent = 'sleep timer';
+                    if (localState.playing) window.ipcRenderer.send('video-command', 'togglePlay');
+                }
+            }, 1000);
+        }
+
+        function updateSleepTimerDisplay() {
+            const m = Math.floor(sleepTimerRemaining / 60);
+            const s = sleepTimerRemaining % 60;
+            document.getElementById('sleepTimerText').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Sleep modal keyboard handler — must intercept BEFORE any other listener
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('sleepTimerModal');
+            if (!modal.classList.contains('visible')) return;
+            // Swallow the event entirely so nothing else (page scroll, nav) fires
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            const allBtns = [...document.querySelectorAll('.sleep-option-btn'), document.querySelector('.sleep-cancel-btn')];
+            if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                sleepModalFocusIndex = Math.min(allBtns.length - 1, sleepModalFocusIndex + 1);
+                updateSleepModalFocus();
+            } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                sleepModalFocusIndex = Math.max(0, sleepModalFocusIndex - 1);
+                updateSleepModalFocus();
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                allBtns[sleepModalFocusIndex]?.click();
+            } else if (e.key === 'Escape' || e.key === 'Backspace') {
+                closeSleepTimerModal();
+            }
+        }, true); // capture phase — fires before bubble-phase listeners
+
+        // =================================================================
+        // SETTINGS — keyboard navigation + new clear functions + seek/hud prefs
+        // =================================================================
+        let seekStep = parseInt(localStorage.getItem('ot_seekStep') || '20');
+        let hudTimeoutMs = parseInt(localStorage.getItem('ot_hudTimeout') || '3000');
+
+        function clearWatchHistory() {
+            if (!activeProfile) return;
+            continueWatching = [];
+            localStorage.setItem(`ot_history_${activeProfile.id}`, '[]');
+            alert('watch history cleared');
+        }
+        function clearWatchlist() {
+            watchlist = [];
+            localStorage.setItem('ot_watchlist', '[]');
+            alert('my list cleared');
+        }
+
+        // Settings modal keyboard nav — capture phase so it fires before other listeners
+        let settingsRowIndex = -1; // -1 = close button, 0..n = setting rows
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('settingsModal');
+            if (!modal.classList.contains('visible')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            const rows = Array.from(modal.querySelectorAll('.setting-row[data-setting]'));
+            const closeBtn = modal.querySelector('.close');
+
+            if (e.key === 'ArrowDown') {
+                settingsRowIndex = Math.min(rows.length - 1, settingsRowIndex + 1);
+            } else if (e.key === 'ArrowUp') {
+                settingsRowIndex = Math.max(-1, settingsRowIndex - 1);
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                if (settingsRowIndex === -1) { closeSettings(); return; }
+                const focused = rows[settingsRowIndex];
+                if (!focused) return;
+                const toggle = focused.querySelector('input[type="checkbox"]');
+                const select = focused.querySelector('select');
+                const btn = focused.querySelector('button');
+                if (toggle) toggle.click();
+                else if (select) { try { select.showPicker(); } catch { select.focus(); } }
+                else if (btn) btn.click();
+                return;
+            } else if (e.key === 'Escape' || e.key === 'Backspace') {
+                closeSettings(); return;
+            }
+
+            // Update visual focus
+            rows.forEach(r => r.classList.remove('nav-focus'));
+            if (closeBtn) closeBtn.classList.remove('nav-focus');
+            if (settingsRowIndex === -1) {
+                if (closeBtn) { closeBtn.classList.add('nav-focus'); closeBtn.focus(); }
+            } else {
+                rows[settingsRowIndex]?.classList.add('nav-focus');
+                rows[settingsRowIndex]?.scrollIntoView({ block: 'nearest' });
+            }
+        }, true); // capture phase
+
+        // =================================================================
+        // EPISODE PANEL — Netflix-style left slide-out
+        // =================================================================
+        let epanelOpen = false;
+        let epanelNavZone = 'episodes'; // 'seasons' | 'episodes'
+        let epanelSeasonIndex = 0;
+        let epanelEpIndex = 0;
+        let epanelSeasons = [];
+        let epanelEpisodes = [];
+        let epanelLoadedSeason = null;
+        const epanelEpisodeCache = {}; // Cache episodes per season to avoid re-fetching
+
+        function openEpisodePanel() {
+            if (currentType !== 'tv' || !currentId) return;
+            epanelOpen = true;
+            epanelNavZone = 'episodes';
+            epanelEpIndex = 0;
+
+            // Show panel + backdrop
+            document.getElementById('episodePanel').classList.add('open');
+            document.getElementById('episodePanelBackdrop').classList.add('visible');
+
+            // Keep HUD alive
+            clearTimeout(hudHideTimer);
+
+            // Set header
+            const titleEl = document.getElementById('title');
+            document.getElementById('epanelShowTitle').textContent = titleEl ? titleEl.textContent : '';
+            document.getElementById('epanelSubtitle').textContent = 'episodes';
+
+            // Build season tabs from existing seasonSelect
+            buildEpanelSeasonTabs();
+
+            // Load current season if not already loaded
+            if (epanelLoadedSeason !== currentSeason) {
+                loadEpanelEpisodes(currentSeason);
+            } else {
+                // Re-render with focus on current episode
+                renderEpanelEpisodes();
+            }
+        }
+
+        function buildEpanelSeasonTabs() {
+            const seasonSelect = document.getElementById('seasonSelect');
+            if (!seasonSelect) return;
+            epanelSeasons = Array.from(seasonSelect.options).map(o => ({ value: parseInt(o.value), label: o.text }));
+            epanelSeasonIndex = epanelSeasons.findIndex(s => s.value === currentSeason);
+            if (epanelSeasonIndex < 0) epanelSeasonIndex = 0;
+
+            const tabsEl = document.getElementById('epanelSeasonTabs');
+            tabsEl.innerHTML = '';
+            epanelSeasons.forEach((s, i) => {
+                const tab = document.createElement('div');
+                tab.className = 'epanel-season-tab' + (i === epanelSeasonIndex ? ' active' : '');
+                tab.textContent = s.label || `Season ${s.value}`;
+                tab.dataset.idx = i;
+                tab.onclick = () => selectEpanelSeason(i);
+                tabsEl.appendChild(tab);
+            });
+        }
+
+        function selectEpanelSeason(idx, fromKeyboard = false) {
+            epanelSeasonIndex = idx;
+            epanelEpIndex = 0;
+            // When navigating via keyboard (left/right on seasons row), stay on seasons row.
+            // When clicking a tab with mouse, drop into episodes.
+            if (!fromKeyboard) {
+                epanelNavZone = 'episodes';
+            }
+            // Update tab active state
+            document.querySelectorAll('.epanel-season-tab').forEach((t, i) => {
+                t.classList.toggle('active', i === idx);
+                t.classList.remove('nav-focus');
+            });
+            const season = epanelSeasons[idx];
+            if (season) loadEpanelEpisodes(season.value);
+        }
+
+        async function loadEpanelEpisodes(season) {
+            const listEl = document.getElementById('epanelEpisodeList');
+
+            // Instant cache hit — no spinner, no delay
+            if (epanelEpisodeCache[season]) {
+                epanelEpisodes = epanelEpisodeCache[season];
+                epanelLoadedSeason = season;
+                renderEpanelEpisodes();
+                updateEpanelFocus();
+                return;
+            }
+
+            listEl.innerHTML = '<div class="epanel-loading">loading episodes...</div>';
+            try {
+                const res = await fetch(`${TMDB_BASE}/tv/${currentId}/season/${season}?api_key=${API_KEY}&language=en-US`);
+                const data = await res.json();
+                const episodes = (data.episodes || []).filter(e => e.episode_number);
+                epanelEpisodeCache[season] = episodes; // Store in cache
+                epanelEpisodes = episodes;
+                epanelLoadedSeason = season;
+                renderEpanelEpisodes();
+                updateEpanelFocus();
+            } catch {
+                listEl.innerHTML = '<div class="epanel-loading">failed to load episodes.</div>';
+            }
+        }
+
+        function renderEpanelEpisodes() {
+            const listEl = document.getElementById('epanelEpisodeList');
+            listEl.innerHTML = '';
+            const frag = document.createDocumentFragment();
+            epanelEpisodes.forEach((ep, i) => {
+                const row = document.createElement('div');
+                row.className = 'epanel-ep-row';
+                row.dataset.epNum = ep.episode_number;
+                if (ep.episode_number === currentEpisode && epanelLoadedSeason === currentSeason) {
+                    row.classList.add('is-current');
+                }
+                const thumb = ep.still_path
+                    ? `<img class="epanel-ep-thumb" src="https://image.tmdb.org/t/p/w300${ep.still_path}" loading="lazy" alt="">`
+                    : `<div class="epanel-ep-thumb-placeholder">▶</div>`;
+                const runtime = ep.runtime ? `${ep.runtime} min` : '';
+                row.innerHTML = `${thumb}<div class="epanel-ep-info"><div class="epanel-ep-num">E${ep.episode_number}</div><div class="epanel-ep-name">${ep.name || 'Untitled'}</div><div class="epanel-ep-meta">${runtime}</div></div>`;
+                row.onclick = () => playEpanelEpisode(ep.episode_number);
+                frag.appendChild(row);
+            });
+            listEl.appendChild(frag);
+
+            // Scroll to current episode
+            epanelEpIndex = epanelEpisodes.findIndex(e => e.episode_number === currentEpisode && epanelLoadedSeason === currentSeason);
+            if (epanelEpIndex < 0) epanelEpIndex = 0;
+            updateEpanelFocus();
+            setTimeout(() => {
+                const current = listEl.querySelector('.is-current');
+                if (current) current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 80);
+        }
+
+        function updateEpanelFocus() {
+            const rows = document.querySelectorAll('.epanel-ep-row');
+            const tabs = document.querySelectorAll('.epanel-season-tab');
+            rows.forEach(r => r.classList.remove('is-focused'));
+            tabs.forEach(t => t.classList.remove('nav-focus'));
+
+            if (epanelNavZone === 'episodes' && rows[epanelEpIndex]) {
+                rows[epanelEpIndex].classList.add('is-focused');
+                rows[epanelEpIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (epanelNavZone === 'seasons' && tabs[epanelSeasonIndex]) {
+                tabs[epanelSeasonIndex].classList.add('nav-focus');
+            }
+        }
+
+        function closeEpisodePanel() {
+            epanelOpen = false;
+            document.getElementById('episodePanel').classList.remove('open');
+            document.getElementById('episodePanelBackdrop').classList.remove('visible');
+            // Return focus to HUD
+            const playBtn = document.getElementById('hudPlayPause');
+            if (playBtn) { navState.activeRow = 2; navState.activeIndex = 1; highlightElement(playBtn); }
+            wakeUpHUD();
+        }
+
+        function playEpanelEpisode(epNumber) {
+            closeEpisodePanel();
+            // Switch season if needed
+            if (epanelLoadedSeason !== currentSeason) {
+                const seasonSelect = document.getElementById('seasonSelect');
+                if (seasonSelect) {
+                    seasonSelect.value = epanelLoadedSeason;
+                    seasonSelect.dispatchEvent(new Event('change'));
+                    // Wait for season load, then set episode
+                    setTimeout(() => {
+                        const epSelect = document.getElementById('episodeSelect');
+                        if (epSelect) { epSelect.value = epNumber; epSelect.dispatchEvent(new Event('change')); }
+                    }, 600);
+                    return;
+                }
+            }
+            const epSelect = document.getElementById('episodeSelect');
+            if (epSelect) { epSelect.value = epNumber; epSelect.dispatchEvent(new Event('change')); }
+        }
 
         window.addEventListener('beforeunload', stopPlayer);
 
@@ -2137,25 +3275,33 @@ function startFocusSentinel() {
 
         const active = document.activeElement;
         
-        // --- CHANGE: Added 'nextEpBtn' to whitelist ---
+        // Whitelist: all valid HUD focus targets
         const isSafe = active && (
             active.id === 'hudPlayPause' ||
             active.id === 'hudRewind' ||
             active.id === 'hudForward' ||
             active.id === 'hudBackBtn' ||
+            active.id === 'hudCCBtn' ||
+            active.id === 'hudEpisodesBtn' ||
             active.id === 'seasonSelect' ||
             active.id === 'episodeSelect' ||
             active.id === 'hudProgressContainer' ||
-            active.id === 'nextEpBtn' // <--- CRITICAL FIX
+            active.id === 'nextEpBtn'
         );
 
-        if (!isSafe) {
-            // Force focus back if we drifted to body/iframe
-            const playBtn = document.getElementById('hudPlayPause');
-            if (playBtn) {
-                playBtn.focus({ preventScroll: true });
-                if (!playBtn.classList.contains('nav-focus')) {
-                    highlightElement(playBtn);
+        // Also safe if episode panel is open (focus is inside it)
+        const panelOpen = document.getElementById('episodePanel')?.classList.contains('open');
+
+        if (!isSafe && !panelOpen) {
+            // Only snap focus back if navState isn't pointing at a HUD side button
+            const sideButtonIndex = navState.activeRow === 2 && navState.activeIndex >= 3;
+            if (!sideButtonIndex) {
+                const playBtn = document.getElementById('hudPlayPause');
+                if (playBtn) {
+                    playBtn.focus({ preventScroll: true });
+                    if (!playBtn.classList.contains('nav-focus')) {
+                        highlightElement(playBtn);
+                    }
                 }
             }
         }
@@ -2195,7 +3341,10 @@ function stopFocusSentinel() {
                 let titleText = item.title || item.name;
                 if (isResume && !imgUrl) imgUrl = item.poster_path; 
                 if (imgUrl) {
-                    div.innerHTML = `<div class="more-options-btn" onclick="showContextMenu(event, ${id}, '${type}')">•••</div><img src="${IMG_BASE}${imgUrl}" loading="lazy" decoding="async" alt="${titleText}"><div class="carousel-item-title">${titleText}</div>${isResume ? `<div class="progress-bar" style="width: ${Math.random() * 90}%"></div>` : ''}`;
+                    const progressPct = isResume && item.resume_entry && item.resume_entry.total_runtime > 0
+                        ? Math.min(97, (item.resume_entry.time / item.resume_entry.total_runtime) * 100)
+                        : 0;
+                    div.innerHTML = `<div class="more-options-btn" onclick="showContextMenu(event, ${id}, '${type}')">•••</div><img src="${IMG_BASE}${imgUrl}" loading="lazy" decoding="async" alt="${titleText}"><div class="carousel-item-title">${titleText}</div>${isResume ? `<div class="progress-bar" style="width: ${progressPct}%"></div>` : ''}`;
                     div.onclick = () => {
     // CHECK: Do we have resume data? (S2 E3)
     if (item.resume_entry && item.resume_entry.season) {
@@ -2419,6 +3568,7 @@ Element.prototype.msRequestFullscreen = function() { };
                 if (items.length > 0) renderCarousel('continue watching', items, home, true);
             }
 
+            await renderMyListRow();
             await loadSimilarShows(home);
             const endpoints = [
                 { title: 'trending now', url: '/trending/all/week' },
@@ -2473,6 +3623,25 @@ Element.prototype.msRequestFullscreen = function() { };
         currentType = type;
         currentSeriesRuntime = item.episode_run_time?.[0] || item.runtime || 3600;
         currentVideoTotalRuntime = currentSeriesRuntime; 
+
+        // Show/hide Episodes button based on content type
+        const epBtn = document.getElementById('hudEpisodesBtn');
+        if (epBtn) epBtn.style.display = (type === 'tv') ? 'flex' : 'none';
+
+        // Store resume info to check after stream loads
+        window._pendingResumeTime = null;
+        const _resumeKey = `${type}_${id}${type === 'movie' ? '' : `_s${resumeSeason}e${resumeEpisode}`}`;
+        const _resumeEntry = continueWatching.find(c => c.key === _resumeKey);
+        if (_resumeEntry && _resumeEntry.time > 30) {
+            window._pendingResumeTime = _resumeEntry.time;
+        }
+
+        // Update HUD now-playing title
+        const hudTitle = document.getElementById('hudNowPlaying');
+        if (hudTitle) {
+            const titleText = (item.title || item.name || '').toLowerCase();
+            hudTitle.textContent = type === 'tv' ? `${titleText} · s${resumeSeason} e${resumeEpisode}` : titleText;
+        }
 
         document.getElementById('title').textContent = item.title || item.name;
         document.getElementById('overview').textContent = item.overview || 'no overview available.';
@@ -2567,6 +3736,13 @@ window.ipcRenderer.on('stream-ready-to-fade', () => {
             const episodeRuntime = data.runtime || currentSeriesRuntime;
             document.getElementById('duration').textContent = episodeRuntime ? `${episodeRuntime} min` : 'n/a';
             currentVideoTotalRuntime = (episodeRuntime * 60) || 3600; 
+            // Keep HUD title in sync with current episode
+            const hudTitle = document.getElementById('hudNowPlaying');
+            if (hudTitle && currentId) {
+                const titleEl = document.getElementById('title');
+                const showName = titleEl ? titleEl.textContent.toLowerCase() : '';
+                hudTitle.textContent = `${showName} · s${currentSeason} e${currentEpisode}`;
+            }
         }
 
         function renderSeasons(seasons, initialSeason = 1, initialEpisode = 1) {
@@ -2612,15 +3788,22 @@ window.ipcRenderer.on('stream-ready-to-fade', () => {
             const modal = document.getElementById('settingsModal');
             modal.classList.add('visible');
             document.querySelector('.main-content').classList.add('blur-background');
+            // Populate all fields
             document.getElementById('qualityPref').value = qualityPref;
             document.getElementById('aiUpscalingToggle').checked = aiUpscalingEnabled;
             document.getElementById('perfModeToggle').checked = performanceMode;
             document.getElementById('autoplayToggle').checked = autoplayEnabled;
-            if(performanceMode) document.body.classList.add('performance-mode');
-            document.getElementById('autoplayToggle').addEventListener('change', (e) => {
-                autoplayEnabled = e.target.checked;
-                localStorage.setItem('ot_autoplay', autoplayEnabled);
-            });
+            document.getElementById('subtitleToggle').checked = subtitlesEnabled;
+            const ss = document.getElementById('seekStepSelect');
+            if (ss) ss.value = String(seekStep);
+            const ht = document.getElementById('hudTimeoutSelect');
+            if (ht) ht.value = String(hudTimeoutMs);
+            if (performanceMode) document.body.classList.add('performance-mode');
+            // Wire save events (replace each time to avoid duplicate listeners)
+            document.getElementById('autoplayToggle').onchange = (e) => { autoplayEnabled = e.target.checked; localStorage.setItem('ot_autoplay', autoplayEnabled); };
+            if (ss) ss.onchange = (e) => { seekStep = parseInt(e.target.value); localStorage.setItem('ot_seekStep', seekStep); };
+            if (ht) ht.onchange = (e) => { hudTimeoutMs = parseInt(e.target.value); localStorage.setItem('ot_hudTimeout', hudTimeoutMs); };
+            settingsRowIndex = -1;
             setTimeout(() => { const closeBtn = modal.querySelector('.close'); if(closeBtn) closeBtn.focus(); }, 100);
         }
 
@@ -2628,6 +3811,7 @@ window.ipcRenderer.on('stream-ready-to-fade', () => {
             const modal = document.getElementById('settingsModal');
             modal.classList.remove('visible');
             document.querySelector('.main-content').classList.remove('blur-background');
+            document.querySelectorAll('#settingsModal .setting-row').forEach(r => r.classList.remove('nav-focus'));
             setTimeout(() => {
                 const newQualityPref = document.getElementById('qualityPref').value;
                 if (newQualityPref !== qualityPref) { qualityPref = newQualityPref; localStorage.setItem('qualityPref', qualityPref); if (currentId) startStreaming(); }
@@ -3451,8 +4635,14 @@ function switchSportSource(index) {
             const menu = document.getElementById('globalContextMenu');
             const unwatchBtn = document.getElementById('cmUnwatch');
             const blockBtn = document.querySelector('.context-menu-item[onclick="handleMenuAction(\'block\')"]');
+            const watchlistBtn = document.getElementById('cmWatchlist');
             const isWatched = continueWatching.some(i => i.id == id);
+            const isOnWatchlist = watchlist.some(i => i.id == id);
             if (isWatched) { unwatchBtn.style.display = 'block'; blockBtn.style.display = 'block'; } else { unwatchBtn.style.display = 'none'; blockBtn.style.display = 'none'; }
+            if (watchlistBtn) {
+                watchlistBtn.textContent = isOnWatchlist ? '✓ on my list' : '+ my list';
+                watchlistBtn.style.color = isOnWatchlist ? 'var(--accent)' : '';
+            }
             const clickX = e.pageX;
             const clickY = e.pageY;
             const menuWidth = 200;
@@ -3525,6 +4715,22 @@ function switchSportSource(index) {
         
         hideContextMenu();
     } 
+    else if (action === 'watchlist') {
+        const alreadyOnList = watchlist.some(i => i.id == id);
+        if (alreadyOnList) {
+            watchlist = watchlist.filter(i => i.id != id);
+        } else {
+            watchlist.push({ id, type, addedAt: Date.now() });
+        }
+        localStorage.setItem('ot_watchlist', JSON.stringify(watchlist));
+        hideContextMenu();
+        // Refresh home if visible so My List row updates
+        if (document.getElementById('home') && !document.getElementById('home').classList.contains('hidden')) {
+            const myListRow = document.querySelector('[data-row="mylist"]');
+            if (myListRow) myListRow.remove();
+            renderMyListRow();
+        }
+    }
     else if (action === 'block') {
         // "Don't Recommend" - Add to block list, then trigger the unwatch animation
         blockedShows.push(id);
@@ -3535,6 +4741,48 @@ function switchSportSource(index) {
         openInfoModal(id, type);
     }
 }
+
+        async function renderMyListRow() {
+            if (watchlist.length === 0) return;
+            const home = document.getElementById('home');
+            if (!home || home.classList.contains('hidden')) return;
+            const items = await Promise.all(watchlist.map(async entry => {
+                try {
+                    const res = await fetch(`${TMDB_BASE}/${entry.type}/${entry.id}?api_key=${API_KEY}&language=en-US`);
+                    if (!res.ok) return null;
+                    const data = await res.json();
+                    data.media_type = entry.type;
+                    return data;
+                } catch { return null; }
+            }));
+            const valid = items.filter(i => i && i.poster_path);
+            if (valid.length === 0) return;
+            // Remove stale row if exists then insert after continue watching
+            const stale = document.querySelector('[data-row="mylist"]');
+            if (stale) stale.remove();
+            const row = document.createElement('div');
+            row.className = 'row';
+            row.setAttribute('data-row', 'mylist');
+            row.innerHTML = `<div class="row-title">> my list</div>`;
+            const cc = document.createElement('div'); cc.className = 'carousel-container';
+            const carousel = document.createElement('div'); carousel.className = 'carousel';
+            enableMouseEdgeScrolling(carousel);
+            valid.forEach((item, i) => {
+                const div = document.createElement('div');
+                div.className = 'carousel-item visible';
+                div.tabIndex = 0;
+                div.style.transitionDelay = `${i * 50}ms`;
+                const type = item.media_type || (item.title ? 'movie' : 'tv');
+                div.innerHTML = `<div class="more-options-btn" onclick="showContextMenu(event, ${item.id}, '${type}')">•••</div><img src="${IMG_BASE}${item.poster_path}" loading="lazy" decoding="async" alt="${item.title || item.name}"><div class="carousel-item-title">${item.title || item.name}</div>`;
+                div.onclick = () => showDetail(item.id, type);
+                carousel.appendChild(div);
+            });
+            cc.appendChild(carousel); row.appendChild(cc);
+            // Insert after continue watching or at top of content
+            const firstRow = home.querySelector('.row');
+            if (firstRow) home.insertBefore(row, firstRow.nextSibling);
+            else home.appendChild(row);
+        }
 
         async function openInfoModal(id, type) {
             const modal = document.getElementById('infoModal');
@@ -3862,32 +5110,25 @@ function hudTogglePlay() {
 
     // --- HUD VISIBILITY ---
     let hudHideTimer = null;
-    const HUD_TIMEOUT = 3000;
+    // hudTimeoutMs is set from settings (default 3000, loaded at top of script section)
 
     function wakeUpHUD() {
-        // 1. Safety Checks
         if (!document.body.classList.contains('viewing-mode')) return;
-        
-        // 2. SCROLL LOCK CHECK (The Fix)
-        // If we are currently scrolling away via keyboard, IGNORE this wake-up call.
         if (isKeyboardScrolling) return;
-
-        // 3. Scroll Position Check
-        // If we have scrolled down past the player, do not show HUD.
         if (window.scrollY > 50) return;
 
         const hud = document.getElementById('customHUD');
         const backBtn = document.getElementById('hudBackBtn');
-
         if (hud) hud.classList.add('visible');
         if (backBtn) backBtn.classList.add('visible');
         document.body.classList.add('user-active');
 
-        // Reset Hide Timer
         clearTimeout(hudHideTimer);
-        hudHideTimer = setTimeout(() => {
-            if (!navState.isSeeking) forceHideHUD();
-        }, HUD_TIMEOUT);
+        if (hudTimeoutMs > 0) {
+            hudHideTimer = setTimeout(() => {
+                if (!navState.isSeeking && !epanelOpen) forceHideHUD();
+            }, hudTimeoutMs);
+        }
     }
 
     function forceHideHUD() {
@@ -3936,19 +5177,25 @@ let navState = {
     // Row 4: Page Bottom (Info)
 
     function getFocusElement(row, index) {
-    if (row === 0) return document.getElementById('hudBackBtn');
-    if (row === 1) return document.getElementById('hudProgressContainer');
-    if (row === 2) {
-        // --- CHANGE: Added 'nextEpBtn' to the end of the list ---
-        const btns = ['hudRewind', 'hudPlayPause', 'hudForward', 'nextEpBtn'];
-        return document.getElementById(btns[index]);
+        if (row === 0) return document.getElementById('hudBackBtn');
+        if (row === 1) return document.getElementById('hudProgressContainer');
+        if (row === 2) {
+            const epBtn = document.getElementById('hudEpisodesBtn');
+            const epVisible = epBtn && epBtn.style.display !== 'none';
+            // Base: Rewind(0) Play(1) Forward(2) CC(3) [Episodes(4) if TV]
+            const ids = ['hudRewind', 'hudPlayPause', 'hudForward', 'hudCCBtn'];
+            if (epVisible) ids.push('hudEpisodesBtn');
+            // Also nextEpBtn if visible
+            const nextBtn = document.getElementById('nextEpBtn');
+            if (nextBtn && nextBtn.classList.contains('visible')) ids.push('nextEpBtn');
+            return document.getElementById(ids[Math.min(index, ids.length - 1)]);
+        }
+        if (row === 3) {
+            if (index === 0) return document.getElementById('seasonSelect');
+            if (index === 1) return document.getElementById('episodeSelect');
+        }
+        return null;
     }
-    if (row === 3) {
-        if (index === 0) return document.getElementById('seasonSelect');
-        if (index === 1) return document.getElementById('episodeSelect');
-    }
-    return null;
-}
 
     function highlightElement(el) {
     document.querySelectorAll('.nav-focus').forEach(e => e.classList.remove('nav-focus'));
@@ -3968,6 +5215,50 @@ function setRemoteDefaultFocus() {
 
     function handleRemoteNavigation(e) {
         if (!document.body.classList.contains('viewing-mode')) return;
+
+        // Sleep timer modal is open — block all navigation
+        if (document.getElementById('sleepTimerModal').classList.contains('visible')) return;
+
+        // Episode Panel is open — intercept navigation
+        if (epanelOpen) {
+            e.preventDefault();
+            if (e.key === 'Escape' || e.key === 'Backspace') {
+                closeEpisodePanel();
+            } else if (e.key === 'ArrowUp') {
+                if (epanelNavZone === 'episodes') {
+                    if (epanelEpIndex > 0) { epanelEpIndex--; updateEpanelFocus(); }
+                    else { epanelNavZone = 'seasons'; updateEpanelFocus(); }
+                }
+            } else if (e.key === 'ArrowDown') {
+                if (epanelNavZone === 'seasons') {
+                    epanelNavZone = 'episodes'; epanelEpIndex = 0; updateEpanelFocus();
+                } else {
+                    epanelEpIndex = Math.min(epanelEpisodes.length - 1, epanelEpIndex + 1);
+                    updateEpanelFocus();
+                }
+            } else if (e.key === 'ArrowLeft') {
+                if (epanelNavZone === 'seasons' && epanelSeasonIndex > 0) {
+                    selectEpanelSeason(epanelSeasonIndex - 1, true);
+                }
+                // On episodes zone, ArrowLeft does nothing (panel is on left edge)
+            } else if (e.key === 'ArrowRight') {
+                if (epanelNavZone === 'seasons') {
+                    // Switch to next season, stay on seasons row
+                    if (epanelSeasonIndex < epanelSeasons.length - 1) selectEpanelSeason(epanelSeasonIndex + 1, true);
+                } else {
+                    // On episodes zone: ArrowRight dismisses the panel and resumes
+                    closeEpisodePanel();
+                }
+            } else if (e.key === 'Enter') {
+                if (epanelNavZone === 'seasons') {
+                    // Enter on seasons row drops into episodes list
+                    epanelNavZone = 'episodes'; epanelEpIndex = 0; updateEpanelFocus();
+                } else if (epanelEpisodes[epanelEpIndex]) {
+                    playEpanelEpisode(epanelEpisodes[epanelEpIndex].episode_number);
+                }
+            }
+            return;
+        }
 
         // Escape/Backspace always cancels seek mode (no commit)
         if (navState.isSeeking && (e.key === 'Escape' || e.key === 'Backspace')) {
@@ -3995,52 +5286,42 @@ function setRemoteDefaultFocus() {
                 wakeUpHUD(); 
             }
             else if (navState.activeRow === 2) { 
-                navState.activeRow = 1; navState.activeIndex = 0; // → Progress Bar
+                navState.activeRow = 1; navState.activeIndex = 0;
             }
             else if (navState.activeRow === 1) { 
-                navState.activeRow = 0; navState.activeIndex = 0; // → Back Button
+                navState.activeRow = 0; navState.activeIndex = 0;
             }
         }
 
-        // 2. DOWN MOVEMENT (THE FIX)
+        // 2. DOWN MOVEMENT
         else if (key === 'ArrowDown') {
-            // If on Back Button -> Go to Controls (HUD stays)
-            if (kickstartLock) {
-        console.log("🚫 Navigation Blocked: Still initializing stream...");
-        return; // <--- STOP HERE. Do not scroll.
-    }
+            if (kickstartLock) return;
 
             if (navState.activeRow === 0) { 
-                navState.activeRow = 1; navState.activeIndex = 0; // → Progress Bar
+                navState.activeRow = 1; navState.activeIndex = 0;
             }
-            // From progress bar → back to controls
             else if (navState.activeRow === 1) {
+                // Open episode panel for TV, else go to controls
+                if (currentType === 'tv') {
+                    openEpisodePanel();
+                    return;
+                }
                 navState.activeRow = 2; navState.activeIndex = 1;
             }
-            // If on Controls -> Go to Content (HUD MUST HIDE)
-            else if (navState.activeRow === 2 || navState.activeRow === 1) { 
+            else if (navState.activeRow === 2) { 
                 navState.activeRow = 3; 
                 navState.activeIndex = 0; 
-                
-                // ENABLE SCROLL LOCK (Ignores mouse for 0.8s)
                 isKeyboardScrolling = true;
                 clearTimeout(scrollLockTimer);
                 scrollLockTimer = setTimeout(() => { isKeyboardScrolling = false; }, 800);
-
                 forceHideHUD(); 
-                
                 const controlsDiv = document.querySelector('.tv-controls-container');
                 if (controlsDiv) {
-                    const yOffset = -20; 
-                    const y = controlsDiv.getBoundingClientRect().top + window.scrollY + yOffset;
+                    const y = controlsDiv.getBoundingClientRect().top + window.scrollY - 20;
                     window.scrollTo({ top: y, behavior: 'smooth' });
                 }
             }
-            // Standard Navigation
-else if (navState.activeRow === 3) {
-
-    return; 
-}
+            else if (navState.activeRow === 3) { return; }
         }
 
         // 3. LEFT/RIGHT
@@ -4049,17 +5330,19 @@ else if (navState.activeRow === 3) {
             if (navState.activeRow === 3) navState.activeIndex = Math.max(0, navState.activeIndex - 1);
         }
         else if (key === 'ArrowRight') {
-    if (navState.activeRow === 2) {
-        const btn = document.getElementById('nextEpBtn');
-        
-        // --- LOGIC: Only allow moving to Index 3 if button is visible ---
-        const isBtnVisible = btn && btn.classList.contains('visible');
-        const maxIdx = isBtnVisible ? 3 : 2;
-        
-        navState.activeIndex = Math.min(maxIdx, navState.activeIndex + 1);
-    }
-    if (navState.activeRow === 3) navState.activeIndex = Math.min(1, navState.activeIndex + 1);
-}
+            if (navState.activeRow === 2) {
+                const epBtn = document.getElementById('hudEpisodesBtn');
+                const epVisible = epBtn && epBtn.style.display !== 'none';
+                const nextBtn = document.getElementById('nextEpBtn');
+                const nextVisible = nextBtn && nextBtn.classList.contains('visible');
+                // Rewind(0) Play(1) Forward(2) CC(3) [Episodes(4)] [NextEp(+1)]
+                let maxIdx = 3;
+                if (epVisible) maxIdx++;
+                if (nextVisible) maxIdx++;
+                navState.activeIndex = Math.min(maxIdx, navState.activeIndex + 1);
+            }
+            if (navState.activeRow === 3) navState.activeIndex = Math.min(1, navState.activeIndex + 1);
+        }
 
         // 4. ACTION
         else if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
@@ -4069,6 +5352,8 @@ else if (navState.activeRow === 3) {
                 else if (el.id === 'hudPlayPause') { hudTogglePlay(); visualPress(el); } 
                 else if (el.id === 'hudRewind') { hudRewind(); visualPress(el); }
                 else if (el.id === 'hudForward') { hudForward(); visualPress(el); }
+                else if (el.id === 'hudCCBtn') { toggleSubtitles(); visualPress(el); }
+                else if (el.id === 'hudEpisodesBtn') { openEpisodePanel(); }
                 else if (el.tagName === 'SELECT') { try { el.showPicker(); } catch (err) { el.click(); } }
                 else { el.click(); }
             }
@@ -4191,19 +5476,18 @@ else if (navState.activeRow === 3) {
             if (!navState.seekInterval) {
                 navState.seekStartTime = Date.now();
 
-                // Accelerating interval — 3 ticks/sec, speed increases on hold
+                // Accelerating interval: starts at seekStep, speeds up on hold
                 navState.seekInterval = setInterval(() => {
                     const holdDuration = (Date.now() - navState.seekStartTime) / 1000;
-                    let jumpAmount = 20;
-                    if (holdDuration > 4) jumpAmount = 60;
-                    else if (holdDuration > 2) jumpAmount = 40;
-
-                    seekPreviewTime = Math.max(0, Math.min(localState.duration, seekPreviewTime + (jumpAmount * direction)));
+                    let jump = seekStep;
+                    if (holdDuration > 4) jump = seekStep * 4;
+                    else if (holdDuration > 2) jump = seekStep * 2;
+                    seekPreviewTime = Math.max(0, Math.min(localState.duration, seekPreviewTime + (jump * direction)));
                     updateSeekTooltip();
                 }, 333);
 
                 // Immediate first jump on tap
-                seekPreviewTime = Math.max(0, Math.min(localState.duration, seekPreviewTime + (20 * direction)));
+                seekPreviewTime = Math.max(0, Math.min(localState.duration, seekPreviewTime + (seekStep * direction)));
                 updateSeekTooltip();
             }
         }
@@ -4410,6 +5694,9 @@ window.ipcRenderer.on('update-message', (event, data) => {
     <button id="hudBackBtn" class="floating-back-btn" onclick="exitCinematicMode()">← back</button>
 
 <div id="customHUD">
+    <div id="hudTitleBar">
+        <div id="hudNowPlaying">opentheatre</div>
+    </div>
     <div id="hudProgressContainer" class="hud-progress-container" onclick="hudSeek(event)">
         <div id="hudProgressBar" class="hud-progress-bar"></div>
         <div id="hudProgressHandle" class="progress-handle"></div>
@@ -4432,7 +5719,6 @@ window.ipcRenderer.on('update-message', (event, data) => {
             <svg id="iconPlay" width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 3L22 12L3 21V3Z" fill="currentColor" />
             </svg>
-            
             <svg id="iconPause" style="display:none;" width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <rect x="4" y="3" width="6" height="18" rx="1" fill="currentColor" />
                 <rect x="14" y="3" width="6" height="18" rx="1" fill="currentColor" />
@@ -4448,8 +5734,60 @@ window.ipcRenderer.on('update-message', (event, data) => {
         </button>
 
         <div id="hudTime">00:00 / 00:00</div>
+
+        <!-- Spacer pushes CC + Episodes to right -->
+        <div style="flex:1;"></div>
+
+        <button id="hudCCBtn" class="hud-side-btn" onclick="toggleSubtitles()">CC</button>
+        <button id="hudEpisodesBtn" class="hud-side-btn" onclick="openEpisodePanel()" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="2" rx="1" fill="currentColor"/><rect x="3" y="11" width="18" height="2" rx="1" fill="currentColor"/><rect x="3" y="17" width="18" height="2" rx="1" fill="currentColor"/></svg>
+            episodes
+        </button>
     </div>
 </div>
 </div>
+    <!-- Sleep Timer Display Badge -->
+    <div id="sleepTimerDisplay">
+        <span>😴</span>
+        <span id="sleepTimerText">60:00</span>
+    </div>
+
+    <!-- Sleep Timer Modal -->
+    <div id="sleepTimerModal">
+        <div class="sleep-modal-box">
+            <div class="sleep-modal-title">sleep timer</div>
+            <div class="sleep-modal-desc">pause after...</div>
+            <div class="sleep-modal-options">
+                <button class="sleep-option-btn" data-minutes="30" onclick="setSleepTimer(30)">
+                    <span class="sleep-option-icon">⏱</span> 30 minutes
+                </button>
+                <button class="sleep-option-btn" data-minutes="60" onclick="setSleepTimer(60)">
+                    <span class="sleep-option-icon">🕐</span> 1 hour
+                </button>
+                <button class="sleep-option-btn" data-minutes="90" onclick="setSleepTimer(90)">
+                    <span class="sleep-option-icon">🕑</span> 1.5 hours
+                </button>
+                <button class="sleep-option-btn" data-minutes="120" onclick="setSleepTimer(120)">
+                    <span class="sleep-option-icon">🕒</span> 2 hours
+                </button>
+            </div>
+            <button class="sleep-cancel-btn" onclick="closeSleepTimerModal()">cancel</button>
+        </div>
+    </div>
+
+    <!-- Episode Panel (Netflix-style slide from left) -->
+    <div id="episodePanelBackdrop" onclick="closeEpisodePanel()"></div>
+    <div id="episodePanel">
+        <div class="epanel-header">
+            <div class="epanel-show-title" id="epanelShowTitle">loading...</div>
+            <div class="epanel-subtitle" id="epanelSubtitle">episodes</div>
+        </div>
+        <div class="epanel-season-tabs" id="epanelSeasonTabs"></div>
+        <div class="epanel-episode-list" id="epanelEpisodeList">
+            <div class="epanel-loading">loading...</div>
+        </div>
+        <div class="epanel-nav-hint">↑↓ episodes &nbsp;·&nbsp; ←→ seasons &nbsp;·&nbsp; back to close</div>
+    </div>
+
 </body>
 </html>
